@@ -10,19 +10,22 @@ bool loadLocation(Location& out) {
   String label = f.readStringUntil('\n');
   String lat = f.readStringUntil('\n');
   String lon = f.readStringUntil('\n');
+  String mode = f.readStringUntil('\n');
   f.close();
+  mode.trim();
   label.trim();
   if (!label.length() || !lat.length() || !lon.length()) return false;
   out.label = label;
   out.lat = lat.toFloat();
   out.lon = lon.toFloat();
   out.valid = true;
+  out.automatic = mode != "fixed";
   return true;
 }
 
 void saveLocation(const Location& loc) {
   File f = LittleFS.open(PATH, "w");
   if (!f) return;
-  f.printf("%s\n%.4f\n%.4f\n", loc.label.c_str(), loc.lat, loc.lon);
+  f.printf("%s\n%.4f\n%.4f\n%s\n", loc.label.c_str(), loc.lat, loc.lon, loc.automatic ? "auto" : "fixed");
   f.close();
 }

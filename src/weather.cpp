@@ -47,7 +47,46 @@ void copyTime(const char* iso, char out[6]) {   // "2026-10-11T07:12" -> "07:12"
   if (iso && strlen(iso) >= 16) { memcpy(out, iso + 11, 5); out[5] = 0; }
 }
 
+// US state name -> postal abbreviation, for "CITY, ST" labels.
+const char* stateAbbrev(const char* name) {
+  static const char* const T[][2] = {
+    {"Alabama","AL"},{"Alaska","AK"},{"Arizona","AZ"},{"Arkansas","AR"},{"California","CA"},
+    {"Colorado","CO"},{"Connecticut","CT"},{"Delaware","DE"},{"District of Columbia","DC"},
+    {"Florida","FL"},{"Georgia","GA"},{"Hawaii","HI"},{"Idaho","ID"},{"Illinois","IL"},
+    {"Indiana","IN"},{"Iowa","IA"},{"Kansas","KS"},{"Kentucky","KY"},{"Louisiana","LA"},
+    {"Maine","ME"},{"Maryland","MD"},{"Massachusetts","MA"},{"Michigan","MI"},{"Minnesota","MN"},
+    {"Mississippi","MS"},{"Missouri","MO"},{"Montana","MT"},{"Nebraska","NE"},{"Nevada","NV"},
+    {"New Hampshire","NH"},{"New Jersey","NJ"},{"New Mexico","NM"},{"New York","NY"},
+    {"North Carolina","NC"},{"North Dakota","ND"},{"Ohio","OH"},{"Oklahoma","OK"},{"Oregon","OR"},
+    {"Pennsylvania","PA"},{"Rhode Island","RI"},{"South Carolina","SC"},{"South Dakota","SD"},
+    {"Tennessee","TN"},{"Texas","TX"},{"Utah","UT"},{"Vermont","VT"},{"Virginia","VA"},
+    {"Washington","WA"},{"West Virginia","WV"},{"Wisconsin","WI"},{"Wyoming","WY"},
+    {"Puerto Rico","PR"}};
+  for (auto& e : T) if (strcasecmp(e[0], name) == 0) return e[1];
+  return nullptr;
+}
+
 }  // namespace
+
+bool locateByIp(Location& out, String& error) {
+  JsonDocument doc;
+  if (!getJson("https://ipinfo.io/json", doc, error)) return false;
+  const char* loc = doc["loc"] | "";        // "latitude,longitude"
+  const char* comma = strchr(loc, ',');
+  if (!comma) { error = "no location in response"; return false; }
+  out.lat = atof(loc);
+  out.lon = atof(comma + 1);
+  const char* city = doc["city"] | "";
+  const char* region = doc["region"] | "";
+  const char* country = doc["country"] | "";
+  const char* st = strcmp(country, "US") == 0 ? stateAbbrev(region) : nullptr;
+  out.label = String(city) + ", " + (st ? st : (*country ? country : region));
+  out.label.toUpperCase();
+  out.valid = true;
+  out.automatic = true;
+  Serial.printf("IP location: %s, %s, %s (%.4f, %.4f)\n", city, region, country, out.lat, out.lon);
+  return true;
+}
 
 bool geocode(const String& name, Location& out, String& error) {
   String url = "https://geocoding-api.open-meteo.com/v1/search?count=1&language=en&format=json&name=" +
@@ -62,6 +101,7 @@ bool geocode(const String& name, Location& out, String& error) {
   out.label.trim();
   out.label.toUpperCase();
   out.valid = true;
+  out.automatic = false;
   Serial.printf("Geocoded \"%s\" -> %s, %s (%.4f, %.4f)\n", name.c_str(), (const char*)(r["name"] | ""),
                 (const char*)(r["admin1"] | ""), out.lat, out.lon);
   return true;

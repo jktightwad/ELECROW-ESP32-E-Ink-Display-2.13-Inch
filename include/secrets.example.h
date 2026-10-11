@@ -21,6 +21,6 @@
 //   {"deviceId":"nodavid","cmd":"random"}
 //   {"deviceId":"nodavid","cmd":"show","text":"Back in 5"}
 //   {"deviceId":"nodavid","cmd":"add","text":"A new line"}
-//   {"deviceId":"nodavid","cmd":"location","text":"Albany, NY"}
+//   {"deviceId":"nodavid","cmd":"location","text":"Albany, NY"}   (or "auto": by IP address)
 #define MQTT_FEED     "onair-dot-control"
 #define DEVICE_ID     "nodavid"

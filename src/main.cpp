@@ -18,7 +18,7 @@ CrowPanelEPD epd;
 GFXcanvas1 canvas(CrowPanelEPD::WIDTH, CrowPanelEPD::HEIGHT);  // 1 = black
 LineStore lines;
 
-const char* const DEFAULT_LOCATION = "Albany, NY";   // until changed with the "location" command
+const char* const DEFAULT_LOCATION = "Albany, NY";   // used if the IP location lookup fails
 const uint8_t TRIGGER_BUTTON = KEY_OK;               // press the dial
 const uint8_t SETUP_BUTTON = KEY_EXIT;               // hold while starting to open Wi-Fi setup
 const uint32_t MESSAGE_SHOW_MS = 10000;              // how long a message stays up
@@ -26,6 +26,7 @@ const uint32_t WEATHER_EVERY_MS = 10 * 60000UL;      // weather refresh (with a 
 const uint32_t WEATHER_RETRY_MS = 2 * 60000UL;       // retry after a failed fetch
 const uint32_t FULL_REFRESH_EVERY_MS = 10 * 60000UL; // clears ghosting left by fast refreshes
 const uint32_t STALE_AFTER_MS = 30 * 60000UL;        // show "offline" when weather is this old
+const uint32_t IP_LOCATION_EVERY_MS = 6 * 3600000UL; // re-check where the board is (auto mode)
 
 enum class Screen { Dashboard, Message };
 Screen screen = Screen::Dashboard;
@@ -36,6 +37,8 @@ WeatherData weather;
 uint32_t weather_ok_at = 0;          // millis() of the last successful fetch
 uint32_t weather_tried_at = 0;
 bool weather_tried = false;
+uint32_t ip_checked_at = 0;
+bool ip_checked = false;
 
 // Last frame sent to the panel, needed for fast refreshes.
 uint8_t prev_frame[CrowPanelEPD::BUFFER_BYTES];
@@ -141,21 +144,44 @@ void showSetup(const char* ap_name) {
 
 // ---------------------------------------------------------------- weather
 
-// Looks up the location if needed, then fetches the weather. Returns true on success.
-bool updateWeather() {
-  weather_tried = true;
-  weather_tried_at = millis();
+// Works out the location: by IP address in auto mode (falling back to
+// DEFAULT_LOCATION), or by looking up the saved name in fixed mode.
+bool resolveLocation() {
   String error;
-  if (!location.valid) {
-    Location loc;
-    if (!geocode(location.label.length() ? location.label : String(DEFAULT_LOCATION), loc, error)) {
+  Location loc;
+  if (location.automatic) {
+    ip_checked = true;
+    ip_checked_at = millis();
+    if (locateByIp(loc, error)) {
+      location = loc;
+      saveLocation(location);
+      return true;
+    }
+    Serial.printf("IP location failed (%s) - using %s\n", error.c_str(), DEFAULT_LOCATION);
+    if (!geocode(DEFAULT_LOCATION, loc, error)) {
       Serial.printf("Location lookup failed: %s\n", error.c_str());
       return false;
     }
+    loc.automatic = true;                // keep trying the IP lookup later
     location = loc;
-    saveLocation(location);
+    return true;
   }
+  if (!geocode(location.label, loc, error)) {
+    Serial.printf("Location lookup failed: %s\n", error.c_str());
+    return false;
+  }
+  location = loc;
+  saveLocation(location);
+  return true;
+}
+
+// Fetches the weather, resolving the location first if needed. Returns true on success.
+bool updateWeather() {
+  weather_tried = true;
+  weather_tried_at = millis();
+  if (!location.valid && !resolveLocation()) return false;
   WeatherData w;
+  String error;
   if (!fetchWeather(location, w, error)) {
     Serial.printf("Weather fetch failed: %s\n", error.c_str());
     return false;
@@ -166,6 +192,30 @@ bool updateWeather() {
   return true;
 }
 
+// Auto mode: re-checks the IP location now and then, so a moved board follows.
+// Returns true if the location changed (weather refetched).
+bool checkIpLocation() {
+  if (!location.automatic || !netWifiConnected()) return false;
+  if (ip_checked && millis() - ip_checked_at < IP_LOCATION_EVERY_MS) return false;
+  ip_checked = true;
+  ip_checked_at = millis();
+  Location loc;
+  String error;
+  if (!locateByIp(loc, error)) {
+    Serial.printf("IP location check failed: %s\n", error.c_str());
+    return false;
+  }
+  bool moved = !location.valid || loc.label != location.label ||
+               fabsf(loc.lat - location.lat) > 0.05f || fabsf(loc.lon - location.lon) > 0.05f;
+  if (!moved) return false;
+  Serial.printf("Location changed to %s\n", loc.label.c_str());
+  location = loc;
+  saveLocation(location);
+  weather.valid = false;
+  updateWeather();
+  return true;
+}
+
 bool weatherDue() {
   if (!netWifiConnected()) return false;
   if (!weather_tried) return true;
@@ -173,16 +223,23 @@ bool weatherDue() {
   return millis() - weather_tried_at >= interval;
 }
 
-// Handles a "location" command: look the place up, save it and refresh.
+// Handles a "location" command: "auto" follows the IP location; anything else
+// is looked up as a place name and fixed.
 void changeLocation(const String& place) {
-  Location loc;
-  String error;
-  if (!geocode(place, loc, error)) {
-    Serial.printf("Location \"%s\" not changed: %s\n", place.c_str(), error.c_str());
-    return;
+  if (place.equalsIgnoreCase("auto")) {
+    location.automatic = true;
+    location.valid = false;
+    Serial.println("Location: automatic (by IP address)");
+  } else {
+    Location loc;
+    String error;
+    if (!geocode(place, loc, error)) {
+      Serial.printf("Location \"%s\" not changed: %s\n", place.c_str(), error.c_str());
+      return;
+    }
+    location = loc;
+    saveLocation(location);
   }
-  location = loc;
-  saveLocation(location);
   weather.valid = false;               // old location's data
   updateWeather();
   if (screen == Screen::Dashboard) showDashboard(true);
@@ -202,9 +259,10 @@ void setup() {
 
   lines.begin();                           // also mounts the file system
   if (!loadLocation(location)) {
-    location.label = DEFAULT_LOCATION;
+    location.label = DEFAULT_LOCATION;     // shown until the first lookup
     location.label.toUpperCase();
-    location.valid = false;                // looked up once Wi-Fi is up
+    location.valid = false;
+    location.automatic = true;
   }
   showDashboard(true);                     // placeholders until data arrives
 
@@ -248,6 +306,8 @@ void loop() {
       if (weatherDue()) updateWeather();
       showDashboard(true);
     }
+  } else if (weather.valid && checkIpLocation()) {
+    showDashboard(true);                 // the board has moved
   } else if (!weather.valid && weatherDue()) {
     // First data after boot (or after a failure): don't wait for a minute boundary.
     if (updateWeather()) showDashboard(true);
