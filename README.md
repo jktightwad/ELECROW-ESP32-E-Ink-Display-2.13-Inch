@@ -30,9 +30,13 @@ To change networks later, **hold the Back button while the board starts** (press
 - Clock updates every minute with a **fast refresh** (only changed pixels). Every 10 minutes the
   weather is fetched and the screen gets a **full refresh**, which also clears fast-refresh ghosting.
 - Shows "offline" if the weather is more than 30 minutes old.
-- Location: Albany, NY by default. Change it over MQTT:
-  `{"deviceId":"nodavid","cmd":"location","text":"Saratoga Springs, NY"}`. The name is looked up with
-  Open-Meteo's geocoding ("Town, ST" works) and saved on the board.
+- Location: **automatic by default**: looked up from the internet connection's IP address
+  ([ipinfo.io](https://ipinfo.io), no account) at every start and every 6 hours, so a moved board
+  follows. IP location is approximate (usually the right city, sometimes the internet provider's
+  hub town). If the lookup fails, Albany, NY is used.
+  To fix a location instead: `{"deviceId":"nodavid","cmd":"location","text":"Saratoga Springs, NY"}`
+  (looked up with Open-Meteo's geocoding; "Town, ST" works). To go back to automatic:
+  `{"deviceId":"nodavid","cmd":"location","text":"auto"}`. The choice is saved on the board.
 - Fonts and icons are generated from TrueType files by `tools/make_fonts.py` (needs Python + Pillow);
   the generated headers in `include/fonts/` are committed, so you only re-run it to change sizes or icons.
 
@@ -57,7 +61,8 @@ style as the On Air Light firmware. Everything else on the feed is ignored silen
 | `{"deviceId":"nodavid","cmd":"random"}` | shows a random line |
 | `{"deviceId":"nodavid","cmd":"show","text":"Back in 5"}` | shows that text once |
 | `{"deviceId":"nodavid","cmd":"add","text":"A new line"}` | adds the line to the list stored on the board |
-| `{"deviceId":"nodavid","cmd":"location","text":"Albany, NY"}` | changes the weather location |
+| `{"deviceId":"nodavid","cmd":"location","text":"Albany, NY"}` | fixes the weather location |
+| `{"deviceId":"nodavid","cmd":"location","text":"auto"}` | location from the IP address (default) |
 
 `"deviceIds":["nodavid", ...]` works too. The On Air Light firmware ignores these, because
 its device ID doesn't match.
