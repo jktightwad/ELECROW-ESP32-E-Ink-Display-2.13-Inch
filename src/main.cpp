@@ -33,11 +33,23 @@ void setup() {
   delay(1500);
   Serial.println("CrowPanel 2.13 desk display - boot");
 
+  // Configure the control pins before GxEPD2 touches them. GxEPD2 writes to
+  // them before calling pinMode, which this ESP32 core rejects with an error.
+  pinMode(EPD_CS, OUTPUT);   digitalWrite(EPD_CS, HIGH);
+  pinMode(EPD_DC, OUTPUT);   digitalWrite(EPD_DC, HIGH);
+  pinMode(EPD_RST, OUTPUT);  digitalWrite(EPD_RST, HIGH);
+  pinMode(EPD_BUSY, INPUT);
+
   pinMode(EPD_POWER, OUTPUT);
   digitalWrite(EPD_POWER, HIGH);   // e-paper power rail on (see board_pins.h)
+  delay(100);                      // let the panel power up; Elecrow waits 100ms before reset
+
+  // Diagnostic: SSD1680 BUSY is HIGH while busy, LOW when idle.
+  Serial.printf("BUSY after power-on: %d\n", digitalRead(EPD_BUSY));
 
   SPI.begin(EPD_SCK, -1, EPD_MOSI, EPD_CS);
   display.init(115200);   // also enables GxEPD2 diagnostic output on Serial
+  Serial.printf("BUSY after init: %d\n", digitalRead(EPD_BUSY));
   drawHello();
   Serial.println("Display drawn");
 }
