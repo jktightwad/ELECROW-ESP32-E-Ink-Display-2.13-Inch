@@ -1,15 +1,55 @@
 #pragma once
-// Lines shown at random. Edit freely: one string per entry, separated by commas.
-// Long lines are word-wrapped and the font shrinks to fit; keep them under
-// roughly 120 characters so they stay readable on the 2.13" screen.
+// Built-in fallback list, used when the board's file system has no /lines.txt
+// (for example before "Upload Filesystem Image" has been run). The main copy is
+// data/lines.txt; keep the two in step if you edit by hand.
+// Characters the font can't show (curly quotes, ellipsis, etc.) are converted
+// when drawn, so these can be pasted as-is.
 
-static const char* const LINES[] = {
-    "Hello from your desk display.",
-    "Drink some water.",
-    "Stand up and stretch for a minute.",
-    "One thing at a time.",
-    "Commit early, commit often.",
-    "Did you take a break today?",
+static const char* const DEFAULT_LINES[] = {
+    "That sounds like an issue, not an ish-me",
+    "That’s interesting but I’m not interested",
+    "I just don’t see myself doing that",
+    "I wish I could but I don’t want to",
+    "I don’t think I’m in this episode",
+    "I wish I wanted to",
+    "Let me pray on it",
+    "Mark me down as low interest, but I’ll let you know if that changes",
+    "I don’t think the woman I’m trying to become would let me do that",
+    "Let’s don’t and say we did",
+    "No thanks, I just ate lunch",
+    "OMG that sounds so fun….please tell me about it afterwards",
+    "That’s not my truth",
+    "No thanks, I’m trying to quit",
+    "I just can’t want to",
+    "Ok, well, I won’t be doing any of that, but thank you so much",
+    "They actually just made that illegal",
+    "I don’t want to and for that reason, I am out",
+    "Sorry I’m late. I got here as soon as I wanted to",
+    "No thank you I hate that",
+    "The spirit is willing but the flesh is weak",
+    "That sounds really fun for someone who would like that",
+    "That’s a no from me dwag",
+    "Let’s revisit this in Q5",
+    "In this economy?",
+    "I’d love to but not as much as I’d love not to",
+    "That’s not my journey",
+    "I can’t I’m too little",
+    "Unsubscribe",
+    "It pains me physically not to but its what has to happen",
+    "Future me isn’t gonna want to so I’m gonna get ahead of things and say no now",
+    "My mom said no",
+    "“We” is a lot of people",
+    "That’s not tasty for me",
+    "I’m planning on making other plans",
+    "No sorry, Christms is right around the corner, my schedule is crazy",
+    "That sounds like something I would have loved to do...yesterday",
+    "I would be please to RSVP as pending",
+    "You can take me with you...in your heart",
+    "The stars...can’t do it. Not today.",
+    "Put me on the bench, coach",
+    "Uninvolve me immediately",
+    "I gave that up for lent",
+    "Sorry I have to wash my hair",
 };
 
-static const size_t LINE_COUNT = sizeof(LINES) / sizeof(LINES[0]);
+static const size_t DEFAULT_LINE_COUNT = sizeof(DEFAULT_LINES) / sizeof(DEFAULT_LINES[0]);

@@ -52,8 +52,38 @@ int wrap(Adafruit_GFX& gfx, const char* text, int16_t width, String out[MAX_LINE
 
 }  // namespace
 
+String toFontText(const char* utf8) {
+  String out;
+  const uint8_t* p = (const uint8_t*)utf8;
+  while (*p) {
+    uint8_t c = *p;
+    if (c < 0x80) {
+      if (c == '\n' || (c >= 0x20 && c < 0x7F)) out += (char)c;
+      else if (c == '\t') out += ' ';
+      p++;
+      continue;
+    }
+    // Multi-byte UTF-8 sequence: length from the lead byte.
+    int len = (c >= 0xF0) ? 4 : (c >= 0xE0) ? 3 : (c >= 0xC0) ? 2 : 1;
+    if (len == 3 && p[0] == 0xE2 && p[1] == 0x80) {
+      switch (p[2]) {
+        case 0x98: case 0x99: out += '\''; break;      // ‘ ’
+        case 0x9C: case 0x9D: out += '"'; break;       // “ ”
+        case 0xA6: out += "..."; break;                // …
+        case 0x93: case 0x94: out += '-'; break;       // – —
+      }
+    } else if (len == 2 && p[0] == 0xC2 && p[1] == 0xA0) {
+      out += ' ';                                      // non-breaking space
+    }
+    for (int i = 0; i < len && *p; i++) p++;
+  }
+  return out;
+}
+
 void drawWrappedText(Adafruit_GFX& gfx, const char* text,
                      int16_t x, int16_t y, int16_t w, int16_t h) {
+  String clean = toFontText(text);
+  text = clean.c_str();
   String lines[MAX_LINES];
   const GFXfont* font = FONTS[sizeof(FONTS) / sizeof(FONTS[0]) - 1];
   int n = -1;
