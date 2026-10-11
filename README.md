@@ -27,16 +27,19 @@ dashes are converted for the display font; other non-ASCII characters (accents, 
   *Platform* → **Upload Filesystem Image**. Until then the built-in copy in `include/lines.h` is used.
 - **Show a line:** press the dial, or use MQTT (below).
 
-### MQTT topics (prefix set in `secrets.h`, default `desk`)
-| Topic | Payload | Effect |
-|---|---|---|
-| `desk/lines` (retained) | whole list, one entry per line | replaces the list and saves it on the board |
-| `desk/lines/add` | one line | appends it, saves, and republishes `desk/lines` |
-| `desk/show/random` | anything | shows a random line |
-| `desk/show/text` | text | shows that text once |
-| `desk/status` | — | published by the display: `online` / `offline` (retained) |
+### MQTT (Adafruit IO)
+Create three feeds on io.adafruit.com and put their keys in `secrets.h`:
 
-A retained `desk/lines` is applied every time the display reconnects, so it is the master copy.
+| Feed (default key) | Value | Effect |
+|---|---|---|
+| `nodavid-lines` | whole list, one entry per line | replaces the list and saves it on the board |
+| `nodavid-add` | one line | appends it, saves, and republishes `nodavid-lines` |
+| `nodavid-show` | `random` (or `1`, or empty) / any other text | shows a random line / shows that text once |
+
+- Turn **history off** for `nodavid-lines` (feed settings). With history on, Adafruit IO caps values at about 1KB; the list is larger.
+- On connect the display fetches the latest `nodavid-lines` value (Adafruit IO `/get`), so that feed is the master copy.
+- Optional: set `FEED_STATUS` to an existing feed (e.g. a debug feed) to get an "online" message on connect.
+- Port 1883 is unencrypted, so the AIO key travels in plain text on your network.
 
 ## Notes
 - Wi-Fi and MQTT settings: copy `include/secrets.example.h` to `include/secrets.h` and fill it in. `secrets.h` is git-ignored, so it is never pushed. Without it, the display runs with the dial button only.

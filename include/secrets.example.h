@@ -7,8 +7,15 @@
 #define WIFI_SSID     "your-network-name"     // 2.4 GHz network
 #define WIFI_PASSWORD "your-wifi-password"
 
-#define MQTT_HOST     "192.168.1.10"          // broker IP or hostname; "" disables MQTT
+// Adafruit IO
+#define MQTT_HOST     "io.adafruit.com"       // "" disables MQTT
 #define MQTT_PORT     1883
-#define MQTT_USER     ""                      // "" if the broker needs no login
-#define MQTT_PASSWORD ""
-#define MQTT_TOPIC_PREFIX "desk"              // topics: desk/lines, desk/show/random, ...
+#define MQTT_USER     "your-aio-username"
+#define MQTT_PASSWORD "your-aio-key"
+
+// Feed keys (from each feed's page on io.adafruit.com). Create these feeds first.
+#define FEED_LINES    "nodavid-lines"   // whole list, one entry per line. Turn feed HISTORY OFF
+                                        // (allows values up to 100KB instead of 1KB).
+#define FEED_ADD      "nodavid-add"     // one line to append to the list
+#define FEED_SHOW     "nodavid-show"    // "random" (or "1", or empty) = random line; any other text is shown as-is
+#define FEED_STATUS   ""                // optional, e.g. "debug-messages": the display posts "online" here; "" = off
