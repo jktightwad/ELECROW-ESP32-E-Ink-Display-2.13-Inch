@@ -18,10 +18,19 @@ Firmware for the **Elecrow CrowPanel ESP32 E-Paper HMI 2.13"** (122x250, black/w
 - [ ] Weather dashboard, clock, fast refresh, Wi-Fi setup hotspot: written, not yet confirmed on hardware
 
 ## Wi-Fi setup
-On boot the display tries the Wi-Fi saved on the board, then `WIFI_SSID` from `secrets.h` (if set).
-If neither connects, it opens an open hotspot **CrowPanel-Setup** for 5 minutes and shows the steps on
+At start the display scans and joins the **strongest known network in range**. Known networks are:
+- networks saved on the board (`/wifi.txt`, up to 10, most recently used first). Every network it
+  connects to is saved, including ones set up through the hotspot, so they survive reboots and
+  firmware uploads (but not *Upload Filesystem Image*, which replaces the file system);
+- networks listed in `WIFI_NETWORKS` in `secrets.h` (see `secrets.example.h`).
+
+If none is in range, it opens an open hotspot **CrowPanel-Setup** for 5 minutes and shows the steps on
 screen: join it from a phone, pick your network on the page that opens (or browse to 192.168.4.1).
-To change networks later, **hold the Back button while the board starts** (press Reset with Back held).
+To add a network that's not in range at startup, **hold the Back button while the board starts**.
+If Wi-Fi drops for more than a minute, it rescans for any known network every minute.
+
+Passwords are stored unencrypted in the board's flash (as the ESP32's own Wi-Fi storage does), so
+anyone with the board and a USB cable could read them.
 
 ## Weather dashboard
 - Data: [Open-Meteo](https://open-meteo.com) (free for non-commercial use, no API key): current
