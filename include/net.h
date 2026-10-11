@@ -1,12 +1,13 @@
 #pragma once
 #include <Arduino.h>
 
-// Wi-Fi + MQTT. Topics (prefix set in secrets.h, default "desk"):
-//   <prefix>/lines          retained; whole list, one entry per line -> replaces the list
-//   <prefix>/lines/add      one line -> appended to the list
-//   <prefix>/show/random    any payload -> show a random line
-//   <prefix>/show/text      text -> show that text once
-//   <prefix>/status         published by the display: "online" / "offline" (retained)
+// Wi-Fi + MQTT, set up for Adafruit IO. Feeds (keys set in secrets.h):
+//   FEED_LINES   whole list, one entry per line -> replaces the list
+//   FEED_ADD     one line -> appended to the list
+//   FEED_SHOW    "random" / "1" / empty -> random line; other text -> shown once
+//   FEED_STATUS  optional; the display publishes "online" when it connects
+// Topics are <user>/feeds/<key>. On connect the display requests the latest
+// FEED_LINES value with Adafruit IO's <topic>/get.
 struct NetHandlers {
   void (*onLines)(const String& text);
   void (*onAdd)(const String& line);
@@ -18,6 +19,6 @@ struct NetHandlers {
 bool netBegin(const NetHandlers& handlers);
 void netLoop();
 
-// Publishes the list to <prefix>/lines as a retained message, so the broker's
-// copy matches the device after a change made with /lines/add.
+// Publishes the list to FEED_LINES, so Adafruit IO's copy matches the device
+// after a change made with FEED_ADD.
 void netPublishLines(const String& text);

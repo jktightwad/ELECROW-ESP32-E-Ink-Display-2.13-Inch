@@ -16,8 +16,17 @@
 #ifndef MQTT_PASSWORD
 #define MQTT_PASSWORD ""
 #endif
-#ifndef MQTT_TOPIC_PREFIX
-#define MQTT_TOPIC_PREFIX "desk"
+#ifndef FEED_LINES
+#define FEED_LINES "nodavid-lines"
+#endif
+#ifndef FEED_ADD
+#define FEED_ADD "nodavid-add"
+#endif
+#ifndef FEED_SHOW
+#define FEED_SHOW "nodavid-show"
+#endif
+#ifndef FEED_STATUS
+#define FEED_STATUS ""
 #endif
 #else
 #define HAVE_SECRETS 0
@@ -32,11 +41,10 @@ namespace {
 WiFiClient wifi_client;
 PubSubClient mqtt(wifi_client);
 NetHandlers handlers;
-String prefix = MQTT_TOPIC_PREFIX;
 String client_id;
 uint32_t last_attempt = 0;
 
-String topic(const char* suffix) { return prefix + suffix; }
+String feedTopic(const char* key) { return String(MQTT_USER) + "/feeds/" + key; }
 
 void onMessage(char* t, uint8_t* payload, unsigned int len) {
   String body;
@@ -44,25 +52,29 @@ void onMessage(char* t, uint8_t* payload, unsigned int len) {
   for (unsigned int i = 0; i < len; i++) body += (char)payload[i];
   String tp(t);
   Serial.printf("MQTT %s (%u bytes)\n", t, len);
-  if (tp == topic("/lines")) handlers.onLines(body);
-  else if (tp == topic("/lines/add")) handlers.onAdd(body);
-  else if (tp == topic("/show/random")) handlers.onShowRandom();
-  else if (tp == topic("/show/text")) handlers.onShowText(body);
+  if (tp == feedTopic(FEED_LINES)) {
+    handlers.onLines(body);
+  } else if (tp == feedTopic(FEED_ADD)) {
+    handlers.onAdd(body);
+  } else if (tp == feedTopic(FEED_SHOW)) {
+    String cmd = body;
+    cmd.trim();
+    if (cmd.length() == 0 || cmd == "1" || cmd.equalsIgnoreCase("random")) handlers.onShowRandom();
+    else handlers.onShowText(body);
+  }
 }
 
 void connectMqtt() {
-  const char* user = strlen(MQTT_USER) ? MQTT_USER : nullptr;
-  const char* pass = strlen(MQTT_USER) ? MQTT_PASSWORD : nullptr;
-  String status = topic("/status");
-  // Last will: the broker publishes "offline" if the display drops off.
-  if (mqtt.connect(client_id.c_str(), user, pass, status.c_str(), 1, true, "offline")) {
+  if (mqtt.connect(client_id.c_str(), MQTT_USER, MQTT_PASSWORD)) {
     Serial.println("MQTT connected");
-    mqtt.publish(status.c_str(), "online", true);
-    mqtt.subscribe(topic("/lines").c_str());
-    mqtt.subscribe(topic("/lines/add").c_str());
-    mqtt.subscribe(topic("/show/random").c_str());
-    mqtt.subscribe(topic("/show/text").c_str());
+    mqtt.subscribe(feedTopic(FEED_LINES).c_str());
+    mqtt.subscribe(feedTopic(FEED_ADD).c_str());
+    mqtt.subscribe(feedTopic(FEED_SHOW).c_str());
+    // Ask Adafruit IO to resend the latest list (its alternative to retained messages).
+    mqtt.publish((feedTopic(FEED_LINES) + "/get").c_str(), "");
+    if (strlen(FEED_STATUS)) mqtt.publish(feedTopic(FEED_STATUS).c_str(), "nodavid display online");
   } else {
+    // State codes: see PubSubClient.h (e.g. 4 = bad username/key, 5 = not authorised)
     Serial.printf("MQTT connect failed, state %d\n", mqtt.state());
   }
 }
@@ -94,7 +106,8 @@ void netLoop() {
   }
   if (!connected || !strlen(MQTT_HOST)) return;
   if (!mqtt.connected()) {
-    if (millis() - last_attempt > 5000) {  // retry every 5 s
+    // Adafruit IO limits connection attempts, so retry at most every 10 s.
+    if (last_attempt == 0 || millis() - last_attempt > 10000) {
       last_attempt = millis();
       connectMqtt();
     }
@@ -104,7 +117,7 @@ void netLoop() {
 }
 
 void netPublishLines(const String& text) {
-  if (mqtt.connected()) mqtt.publish(topic("/lines").c_str(), text.c_str(), true);
+  if (mqtt.connected()) mqtt.publish(feedTopic(FEED_LINES).c_str(), text.c_str());
 }
 
 #else  // no secrets.h
