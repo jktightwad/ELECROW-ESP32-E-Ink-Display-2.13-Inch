@@ -156,6 +156,50 @@ void drawDashboardScreen(Adafruit_GFX& gfx, const DashboardInfo& info) {
   drawText(gfx, &Barlow_SB13, SCREEN_W - 4, row_top, cond, 2);
 }
 
+void drawBootScreen(Adafruit_GFX& gfx, const BootStep* steps, int count) {
+  gfx.fillScreen(0);
+  gfx.fillRect(0, 0, SCREEN_W, 16, 1);
+  drawText(gfx, &Barlow_SB13, 4, 3, "STARTING UP", 0, 0);
+  const int16_t row_h = 17, box = 10;
+  for (int i = 0; i < count; i++) {
+    const BootStep& st = steps[i];
+    int16_t top = 21 + i * row_h;
+    int16_t bx = 6, by = top;
+    // Status box: done = filled with a check, failed = X, active = dot, pending/skipped = empty.
+    switch (st.state) {
+      case StepState::Done:
+        gfx.fillRect(bx, by, box, box, 1);
+        gfx.drawLine(bx + 2, by + 5, bx + 4, by + 7, 0);
+        gfx.drawLine(bx + 4, by + 7, bx + 8, by + 2, 0);
+        gfx.drawLine(bx + 2, by + 4, bx + 4, by + 6, 0);
+        gfx.drawLine(bx + 4, by + 6, bx + 8, by + 1, 0);
+        break;
+      case StepState::Failed:
+        gfx.drawRect(bx, by, box, box, 1);
+        gfx.drawLine(bx + 2, by + 2, bx + 7, by + 7, 1);
+        gfx.drawLine(bx + 7, by + 2, bx + 2, by + 7, 1);
+        break;
+      case StepState::Active:
+        gfx.drawRect(bx, by, box, box, 1);
+        gfx.fillRect(bx + 3, by + 3, 4, 4, 1);
+        break;
+      default:
+        gfx.drawRect(bx, by, box, box, 1);
+        break;
+    }
+    String text = st.label;
+    if (st.state == StepState::Active) text += "...";
+    else if (st.detail.length()) text += String(": ") + st.detail;
+    // Keep within the screen width.
+    gfx.setFont(&Barlow_SB13);
+    if (inkWidth(gfx, text.c_str()) > SCREEN_W - 26) {
+      while (text.length() > 1 && inkWidth(gfx, (text + "...").c_str()) > SCREEN_W - 26) text.remove(text.length() - 1);
+      text += "...";
+    }
+    drawText(gfx, st.state == StepState::Pending ? &Barlow_M12 : &Barlow_SB13, 22, top, text.c_str());
+  }
+}
+
 void drawSetupScreen(Adafruit_GFX& gfx, const char* ap_name) {
   gfx.fillScreen(0);
   gfx.fillRect(0, 0, SCREEN_W, 16, 1);

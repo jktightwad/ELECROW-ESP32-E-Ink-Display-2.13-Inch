@@ -209,3 +209,5 @@ void netLoop() {
 }
 
 bool netWifiConnected() { return WiFi.status() == WL_CONNECTED; }
+bool netMqttEnabled() { return mqtt_enabled; }
+bool netMqttConnected() { return mqtt_enabled && mqtt.connected(); }

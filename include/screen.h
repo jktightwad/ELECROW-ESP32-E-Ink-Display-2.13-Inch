@@ -23,6 +23,15 @@ void drawDashboardScreen(Adafruit_GFX& gfx, const DashboardInfo& info);
 // "7:05 AM" from 24-hour hour/minute.
 String formatTime12(int hour, int minute);
 
+// Startup checklist.
+enum class StepState { Pending, Active, Done, Failed, Skipped };
+struct BootStep {
+  const char* label;          // e.g. "Wi-Fi"
+  StepState state;
+  String detail;              // e.g. network name, or why it failed
+};
+void drawBootScreen(Adafruit_GFX& gfx, const BootStep* steps, int count);
+
 // Wi-Fi setup instructions while the setup hotspot is open.
 void drawSetupScreen(Adafruit_GFX& gfx, const char* ap_name);
 
