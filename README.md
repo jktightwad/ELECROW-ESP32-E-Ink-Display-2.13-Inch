@@ -9,9 +9,8 @@ Firmware for the **Elecrow CrowPanel ESP32 E-Paper HMI 2.13"** (122x250, black/w
 
 ## Status
 - [ ] Stage 1: upload works and serial prints `alive N`
-- [ ] Verify the pin map in `include/board_pins.h` against Elecrow's 2.13" schematic, then set `PINS_VERIFIED 1`
-- [ ] Confirm the panel controller IC and the matching GxEPD2 driver class
-- [ ] Draw "Hello" on the panel
+- [x] Pin map in `include/board_pins.h` taken from Elecrow's official example code
+- [ ] Draw "Hello" on the panel (GxEPD2 SSD1680 driver; confirm on hardware)
 - [ ] Wi-Fi + content (clock/weather/etc.)
 
 ## Notes

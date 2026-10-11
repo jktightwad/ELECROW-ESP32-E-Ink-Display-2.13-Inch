@@ -1,17 +1,14 @@
 #include <Arduino.h>
 #include "board_pins.h"
 
-// Stage 1: confirm toolchain, upload and serial monitor work.
-// The display code is enabled once board_pins.h is verified (PINS_VERIFIED = 1),
-// so an unverified pin map can't drive the wrong GPIOs.
-
-#if PINS_VERIFIED
 #include <SPI.h>
 #include <GxEPD2_BW.h>
 #include <Fonts/FreeMonoBold9pt7b.h>
 
-// Driver class depends on the panel's controller IC (SSD1680 vs SSD1683 etc.),
-// which is not yet confirmed. GxEPD2_213_B74 is GxEPD2's SSD1680 122x250 class.
+// Elecrow's init code targets the SSD1680 (122x250). GxEPD2 has several SSD1680
+// 122x250 classes; if the image is garbled or faint, try GxEPD2_213_GDEY0213B74
+// or GxEPD2_213_BN. Elecrow also lists a JD79661 variant, which these classes
+// would not drive.
 GxEPD2_BW<GxEPD2_213_B74, GxEPD2_213_B74::HEIGHT> display(
     GxEPD2_213_B74(EPD_CS, EPD_DC, EPD_RST, EPD_BUSY));
 
@@ -30,7 +27,6 @@ void drawHello() {
   } while (display.nextPage());
   display.hibernate();
 }
-#endif
 
 void setup() {
   Serial.begin(115200);
@@ -40,14 +36,10 @@ void setup() {
   pinMode(EPD_POWER, OUTPUT);
   digitalWrite(EPD_POWER, HIGH);   // e-paper power rail on (see board_pins.h)
 
-#if PINS_VERIFIED
   SPI.begin(EPD_SCK, -1, EPD_MOSI, EPD_CS);
-  display.init(115200);
+  display.init(115200);   // also enables GxEPD2 diagnostic output on Serial
   drawHello();
   Serial.println("Display drawn");
-#else
-  Serial.println("Pins not verified yet - display code disabled");
-#endif
 }
 
 void loop() {
