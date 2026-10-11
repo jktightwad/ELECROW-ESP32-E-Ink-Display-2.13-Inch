@@ -16,3 +16,6 @@ Firmware for the **Elecrow CrowPanel ESP32 E-Paper HMI 2.13"** (122x250, black/w
 
 ## Notes
 - Wi-Fi credentials go in `include/secrets.h`, which is git-ignored.
+
+## License
+GPL-3.0. See [LICENSE](LICENSE). This matches the license of GxEPD2, the display library this project uses.
