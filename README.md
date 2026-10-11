@@ -17,6 +17,14 @@ Firmware for the **Elecrow CrowPanel ESP32 E-Paper HMI 2.13"** (122x250, black/w
 - [x] Random "Tell David" line on dial press, list stored on the board (LittleFS)
 - [ ] Weather dashboard, clock, fast refresh, Wi-Fi setup hotspot: written, not yet confirmed on hardware
 
+## Buttons
+| Button | Action |
+|---|---|
+| Dial press | random "Tell David" line (10 s) |
+| Home (Elecrow: Menu, GPIO2) | status page (10 s): Wi-Fi network and signal, IP, MQTT, location, weather age, uptime, MAC |
+| Back (Exit, GPIO1) | back to the dashboard now; held while the board starts: Wi-Fi setup hotspot |
+| Dial up/down | not used yet |
+
 ## Startup
 On power-up the display shows a **startup checklist** under a "POWERING ON" header: Wi-Fi, Clock,
 Location, Weather, Messages (MQTT). Each step is ticked (or crossed, with a short reason) as it completes, using fast

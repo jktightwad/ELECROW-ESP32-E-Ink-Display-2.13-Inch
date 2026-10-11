@@ -32,6 +32,13 @@ struct BootStep {
 };
 void drawBootScreen(Adafruit_GFX& gfx, const BootStep* steps, int count);
 
+// Status page (Home button): one "Label: value" per row, under a header.
+struct StatusRow {
+  const char* label;
+  String value;
+};
+void drawStatusScreen(Adafruit_GFX& gfx, const char* title, const StatusRow* rows, int count);
+
 // Wi-Fi setup instructions while the setup hotspot is open.
 void drawSetupScreen(Adafruit_GFX& gfx, const char* ap_name);
 
