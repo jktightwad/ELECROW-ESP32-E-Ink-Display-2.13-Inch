@@ -13,6 +13,11 @@ class CrowPanelEPD {
   static const uint16_t WIDTH = 128;    // controller columns (122 visible)
   static const uint16_t HEIGHT = 250;   // rows
   static const size_t BUFFER_BYTES = WIDTH / 8 * HEIGHT;
+  // Only columns 6..127 of the 128 are on the glass (confirmed on hardware:
+  // column 0 did not show). In GFXcanvas1 rotation 1 (landscape, 250 x 128) the
+  // visible area is therefore y = 0..121.
+  static const uint16_t FIRST_VISIBLE_COLUMN = 6;
+  static const uint16_t VISIBLE_WIDTH = 122;
 
   // Powers the panel, resets it and loads its configuration.
   void begin();
