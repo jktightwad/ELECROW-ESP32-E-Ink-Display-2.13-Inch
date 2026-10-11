@@ -5,10 +5,13 @@
 // Without a secrets.h the display still works: Wi-Fi is set up with the
 // CrowPanel-Setup hotspot, and only MQTT is unavailable.
 
-// Optional fallback network, tried after the Wi-Fi saved on the board.
-// Delete these two lines to rely on the setup hotspot only.
-#define WIFI_SSID     "your-network-name"     // 2.4 GHz network
-#define WIFI_PASSWORD "your-wifi-password"
+// Optional: Wi-Fi networks to try, in addition to the ones the board has saved
+// (any network set up through the CrowPanel-Setup hotspot is saved automatically).
+// The strongest one in range is used. Delete this block to rely on the hotspot only.
+#define WIFI_NETWORKS { \
+    {"home-network", "home-password"}, \
+    {"office-network", "office-password"}, \
+}
 
 // Adafruit IO
 #define MQTT_HOST     "io.adafruit.com"       // "" disables MQTT

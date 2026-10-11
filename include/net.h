@@ -3,11 +3,13 @@
 
 // Wi-Fi + MQTT.
 //
-// Wi-Fi (same approach as the On Air Light): on boot, try the credentials saved
-// on the board, then WIFI_SSID/WIFI_PASSWORD from secrets.h if present, then
-// open a setup hotspot (WiFiManager portal, open network "CrowPanel-Setup",
-// page at 192.168.4.1) for up to 5 minutes. Holding the Back button while the
-// board starts forces the setup hotspot.
+// Wi-Fi: on boot, scan and join the strongest known network: those saved on the
+// board (/wifi.txt, see wifi_store.h) plus WIFI_NETWORKS / WIFI_SSID from
+// secrets.h. If none is in range, open a setup hotspot (WiFiManager portal,
+// open network "CrowPanel-Setup", page at 192.168.4.1) for up to 5 minutes;
+// a network set up there is saved. Holding the Back button while the board
+// starts forces the setup hotspot. If Wi-Fi drops for over a minute, known
+// networks are rescanned every minute.
 //
 // MQTT (Adafruit IO, needs secrets.h): subscribes to one shared feed
 // (<user>/feeds/<MQTT_FEED>) and acts only on JSON commands addressed to
