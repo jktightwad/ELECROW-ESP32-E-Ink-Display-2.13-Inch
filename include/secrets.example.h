@@ -13,10 +13,10 @@
 #define MQTT_USER     "your-aio-username"
 #define MQTT_PASSWORD "your-aio-key"
 
-// Shared feed: the display only acts on values starting with CMD_PREFIX and
-// ignores everything else posted to the feed.
-//   nodavid:random        show a random line
-//   nodavid:show <text>   show <text> once
-//   nodavid:add <line>    add <line> to the list stored on the board
+// Shared feed. The display acts only on JSON commands addressed to DEVICE_ID
+// and silently ignores everything else on the feed:
+//   {"deviceId":"nodavid","cmd":"random"}
+//   {"deviceId":"nodavid","cmd":"show","text":"Back in 5"}
+//   {"deviceId":"nodavid","cmd":"add","text":"A new line"}
 #define MQTT_FEED     "onair-dot-control"
-#define CMD_PREFIX    "nodavid:"
+#define DEVICE_ID     "nodavid"
