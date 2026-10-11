@@ -20,8 +20,10 @@ GFXcanvas1 canvas(CrowPanelEPD::WIDTH, CrowPanelEPD::HEIGHT);  // 1 = black
 LineStore lines;
 
 const char* const DEFAULT_LOCATION = "Albany, NY";   // used if the IP location lookup fails
-const uint8_t TRIGGER_BUTTON = KEY_OK;               // press the dial
-const uint8_t SETUP_BUTTON = KEY_EXIT;               // hold while starting to open Wi-Fi setup
+const char* const DEVICE_NAME = "Desk Display";      // shown on the status page
+const uint8_t TRIGGER_BUTTON = KEY_OK;               // press the dial: random "Tell David" line
+const uint8_t STATUS_BUTTON = KEY_HOME;              // status page
+const uint8_t BACK_BUTTON = KEY_EXIT;                // back to the dashboard; hold while starting for Wi-Fi setup
 const uint32_t MESSAGE_SHOW_MS = 10000;              // how long a message stays up
 const uint32_t WEATHER_EVERY_MS = 10 * 60000UL;      // weather refresh (with a full screen refresh)
 const uint32_t WEATHER_RETRY_MS = 2 * 60000UL;       // retry after a failed fetch
@@ -51,6 +53,8 @@ long drawn_minute = -1;              // local minute shown on the dashboard
 // Requests from MQTT are queued here and handled in loop(), so the slow
 // display refresh never runs inside the MQTT callback.
 bool pending_random = false;
+bool pending_status = false;
+bool pending_back = false;
 bool pending_text = false;
 String pending_text_value;
 String pending_location;
@@ -133,6 +137,35 @@ void showRandomLine() {
   canvas.setRotation(1);
   if (!drawDavidScreen(canvas, lines.get(i).c_str())) Serial.println("Line too long - shortened");
   canvas.setRotation(0);
+  refresh(true);
+  startMessageTimer();
+}
+
+// Status page: connection details, location, weather age, uptime.
+void showStatus() {
+  String wifi = netWifiConnected() ? netSsid() + " (" + String(netRssi()) + " dBm)" : String("not connected");
+  const char* source = !location.automatic ? "fixed" : (*location_source ? location_source : "by IP");
+  String weather_age = "none yet";
+  if (weather.valid) {
+    uint32_t mins = (millis() - weather_ok_at) / 60000;
+    weather_age = mins == 0 ? String("just now") : String(mins) + " min ago";
+  }
+  uint32_t up = millis() / 60000;          // minutes
+  char uptime[24];
+  snprintf(uptime, sizeof uptime, "%lud %02lu:%02lu", (unsigned long)(up / 1440),
+           (unsigned long)(up / 60 % 24), (unsigned long)(up % 60));
+  StatusRow rows[] = {
+    {"Wi-Fi", wifi},
+    {"IP", netWifiConnected() ? netIp() : String("-")},
+    {"MQTT", String(netMqttStatus()) + " as " + netDeviceId()},
+    {"Location", location.label + " (" + source + ")"},
+    {"Weather", weather_age},
+    {"Uptime", String(uptime) + "  " + netMac()},
+  };
+  canvas.setRotation(1);
+  drawStatusScreen(canvas, DEVICE_NAME, rows, sizeof rows / sizeof rows[0]);
+  canvas.setRotation(0);
+  Serial.println("Showing status");
   refresh(true);
   startMessageTimer();
 }
@@ -293,8 +326,9 @@ void setup() {
   Serial.println("CrowPanel 2.13 desk display - boot");
 
   pinMode(TRIGGER_BUTTON, INPUT_PULLUP);   // buttons read LOW when pressed (per Elecrow's example)
-  pinMode(SETUP_BUTTON, INPUT_PULLUP);
-  bool force_portal = digitalRead(SETUP_BUTTON) == LOW;
+  pinMode(STATUS_BUTTON, INPUT_PULLUP);
+  pinMode(BACK_BUTTON, INPUT_PULLUP);
+  bool force_portal = digitalRead(BACK_BUTTON) == LOW;
   if (force_portal) Serial.println("Back button held - opening Wi-Fi setup");
 
   lines.begin();                           // also mounts the file system
@@ -363,14 +397,21 @@ void setup() {
 void loop() {
   netLoop();
 
-  // Dial press (HIGH -> LOW), with a simple debounce.
-  static int prev = HIGH;
-  int now = digitalRead(TRIGGER_BUTTON);
-  if (prev == HIGH && now == LOW) {
-    delay(30);
-    if (digitalRead(TRIGGER_BUTTON) == LOW) pending_random = true;
+  // Buttons: act on press (HIGH -> LOW), with a simple debounce.
+  struct Button { uint8_t pin; bool* flag; int prev; };
+  static Button buttons[] = {
+    {TRIGGER_BUTTON, &pending_random, HIGH},
+    {STATUS_BUTTON, &pending_status, HIGH},
+    {BACK_BUTTON, &pending_back, HIGH},
+  };
+  for (Button& b : buttons) {
+    int now = digitalRead(b.pin);
+    if (b.prev == HIGH && now == LOW) {
+      delay(30);
+      if (digitalRead(b.pin) == LOW) *b.flag = true;
+    }
+    b.prev = now;
   }
-  prev = now;
 
   if (pending_location.length()) {
     String place = pending_location;
@@ -382,6 +423,12 @@ void loop() {
   } else if (pending_random) {
     pending_random = false;
     showRandomLine();
+  } else if (pending_status) {
+    pending_status = false;
+    showStatus();
+  } else if (pending_back) {
+    pending_back = false;
+    if (screen != Screen::Dashboard) showDashboard(true);
   } else if (screen == Screen::Message) {
     if ((int32_t)(millis() - message_until) >= 0) {
       if (weatherDue()) updateWeather();

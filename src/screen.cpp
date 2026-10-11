@@ -200,6 +200,25 @@ void drawBootScreen(Adafruit_GFX& gfx, const BootStep* steps, int count) {
   }
 }
 
+void drawStatusScreen(Adafruit_GFX& gfx, const char* title, const StatusRow* rows, int count) {
+  gfx.fillScreen(0);
+  gfx.fillRect(0, 0, SCREEN_W, 16, 1);
+  drawText(gfx, &Barlow_SB13, 4, 3, "STATUS", 0, 0);
+  drawText(gfx, &Barlow_SB13, SCREEN_W - 4, 3, title, 2, 0);
+  const int16_t row_h = 17, value_x = 66;
+  for (int i = 0; i < count; i++) {
+    int16_t top = 21 + i * row_h;
+    drawText(gfx, &Barlow_M12, 4, top + 1, rows[i].label);
+    String v = rows[i].value;
+    gfx.setFont(&Barlow_SB13);
+    if (inkWidth(gfx, v.c_str()) > SCREEN_W - 4 - value_x) {
+      while (v.length() > 1 && inkWidth(gfx, (v + "...").c_str()) > SCREEN_W - 4 - value_x) v.remove(v.length() - 1);
+      v += "...";
+    }
+    drawText(gfx, &Barlow_SB13, value_x, top, v.c_str());
+  }
+}
+
 void drawSetupScreen(Adafruit_GFX& gfx, const char* ap_name) {
   gfx.fillScreen(0);
   gfx.fillRect(0, 0, SCREEN_W, 16, 1);

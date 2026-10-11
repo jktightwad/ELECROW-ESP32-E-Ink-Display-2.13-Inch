@@ -211,3 +211,14 @@ void netLoop() {
 bool netWifiConnected() { return WiFi.status() == WL_CONNECTED; }
 bool netMqttEnabled() { return mqtt_enabled; }
 bool netMqttConnected() { return mqtt_enabled && mqtt.connected(); }
+
+String netSsid() { return WiFi.status() == WL_CONNECTED ? WiFi.SSID() : String(""); }
+int netRssi() { return WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0; }
+String netIp() { return WiFi.status() == WL_CONNECTED ? WiFi.localIP().toString() : String(""); }
+const char* netMqttStatus() {
+  if (!mqtt_enabled) return "not set up";
+  if (WiFi.status() != WL_CONNECTED) return "offline";
+  return mqtt.connected() ? "connected" : "connecting";
+}
+const char* netDeviceId() { return DEVICE_ID; }
+String netMac() { return WiFi.macAddress(); }

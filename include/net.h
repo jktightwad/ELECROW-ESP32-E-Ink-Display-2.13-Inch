@@ -30,3 +30,11 @@ void netLoop();
 bool netWifiConnected();
 bool netMqttEnabled();      // Adafruit IO details present in secrets.h
 bool netMqttConnected();
+
+// For the status screen.
+String netSsid();
+int netRssi();              // dBm, 0 if not connected
+String netIp();
+const char* netMqttStatus();   // "connected", "connecting", "not set up", "offline"
+const char* netDeviceId();     // DEVICE_ID used for MQTT commands
+String netMac();
