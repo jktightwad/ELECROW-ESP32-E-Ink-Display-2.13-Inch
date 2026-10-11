@@ -50,14 +50,6 @@ void LineStore::save() const {
   f.close();
 }
 
-bool LineStore::replaceAll(const String& text) {
-  std::vector<String> parsed = parse(text);
-  if (parsed.empty() || parsed == lines_) return false;
-  lines_ = parsed;
-  save();
-  return true;
-}
-
 bool LineStore::add(const String& line) {
   String l = line;
   l.trim();

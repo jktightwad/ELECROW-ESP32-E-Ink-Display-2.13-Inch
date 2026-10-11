@@ -13,9 +13,10 @@
 #define MQTT_USER     "your-aio-username"
 #define MQTT_PASSWORD "your-aio-key"
 
-// Feed keys (from each feed's page on io.adafruit.com). Create these feeds first.
-#define FEED_LINES    "nodavid-lines"   // whole list, one entry per line. Turn feed HISTORY OFF
-                                        // (allows values up to 100KB instead of 1KB).
-#define FEED_ADD      "nodavid-add"     // one line to append to the list
-#define FEED_SHOW     "nodavid-show"    // "random" (or "1", or empty) = random line; any other text is shown as-is
-#define FEED_STATUS   ""                // optional, e.g. "debug-messages": the display posts "online" here; "" = off
+// Shared feed: the display only acts on values starting with CMD_PREFIX and
+// ignores everything else posted to the feed.
+//   nodavid:random        show a random line
+//   nodavid:show <text>   show <text> once
+//   nodavid:add <line>    add <line> to the list stored on the board
+#define MQTT_FEED     "onair-dot-control"
+#define CMD_PREFIX    "nodavid:"

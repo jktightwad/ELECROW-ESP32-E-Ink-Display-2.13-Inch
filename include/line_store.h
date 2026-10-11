@@ -11,10 +11,6 @@ class LineStore {
   size_t size() const { return lines_.size(); }
   const String& get(size_t i) const { return lines_[i]; }
 
-  // Replaces the whole list from newline-separated text and saves it.
-  // Returns false (and changes nothing) if the text is identical or has no lines.
-  bool replaceAll(const String& text);
-
   // Appends one line and saves. Returns false if it is empty or already present.
   bool add(const String& line);
 

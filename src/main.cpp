@@ -63,14 +63,8 @@ void setup() {
   lines.begin();
 
   NetHandlers h;
-  h.onLines = [](const String& text) {
-    if (lines.replaceAll(text)) Serial.printf("List replaced: %u lines\n", (unsigned)lines.size());
-  };
   h.onAdd = [](const String& line) {
-    if (lines.add(line)) {
-      Serial.printf("Line added (%u total)\n", (unsigned)lines.size());
-      netPublishLines(lines.toText());   // keep Adafruit IO's copy of the list in step
-    }
+    if (lines.add(line)) Serial.printf("Line added (%u total)\n", (unsigned)lines.size());
   };
   h.onShowRandom = []() { pending_random = true; };
   h.onShowText = [](const String& text) { pending_text_value = text; pending_text = true; };
