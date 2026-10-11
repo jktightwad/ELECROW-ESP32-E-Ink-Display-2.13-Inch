@@ -1,8 +1,9 @@
 #include <Arduino.h>
 #include <Adafruit_GFX.h>
-#include <Fonts/FreeMonoBold9pt7b.h>
 #include "board_pins.h"
 #include "crowpanel_epd.h"
+#include "lines.h"
+#include "text_layout.h"
 
 // Display controller: this unit matches Elecrow's "arduino-v1.2" example code
 // (BUSY low while busy, black/white mode with MCU-loaded waveforms). GxEPD2's
@@ -12,17 +13,37 @@
 CrowPanelEPD epd;
 GFXcanvas1 canvas(CrowPanelEPD::WIDTH, CrowPanelEPD::HEIGHT);  // 1 = black
 
-void drawHello() {
+const uint8_t TRIGGER_BUTTON = KEY_OK;   // press the dial
+const int16_t MARGIN = 6;
+
+// Draws `text` centred on the visible landscape area and refreshes the panel.
+void showText(const char* text) {
+  canvas.setRotation(1);                 // landscape: 250 x 128, visible y = 0..121
   canvas.fillScreen(0);
-  canvas.setRotation(1);                  // landscape: 250 x 128, visible y = 0..121
-  canvas.drawRect(0, 0, CrowPanelEPD::HEIGHT, CrowPanelEPD::VISIBLE_WIDTH, 1);  // visible-area outline
-  canvas.setFont(&FreeMonoBold9pt7b);
-  canvas.setTextColor(1);
-  canvas.setCursor(10, 30);
-  canvas.print("Desk display");
-  canvas.setCursor(10, 60);
-  canvas.print("Hello!");
+  drawWrappedText(canvas, text, MARGIN, MARGIN,
+                  CrowPanelEPD::HEIGHT - 2 * MARGIN,
+                  CrowPanelEPD::VISIBLE_WIDTH - 2 * MARGIN);
   canvas.setRotation(0);
+
+  epd.begin();                           // wakes the panel from deep sleep
+  uint32_t t = millis();
+  bool ok = epd.display(canvas.getBuffer());
+  epd.sleep();
+  Serial.printf("Refresh %s after %lu ms\n", ok ? "finished" : "TIMED OUT",
+                (unsigned long)(millis() - t));
+}
+
+// Picks a random line, never the same one twice in a row. Also the entry point
+// for the planned MQTT trigger.
+void showRandomLine() {
+  static int last = -1;
+  int i = random(LINE_COUNT);
+  if (LINE_COUNT > 1) {
+    while (i == last) i = random(LINE_COUNT);
+  }
+  last = i;
+  Serial.printf("Showing line %d: %s\n", i, LINES[i]);
+  showText(LINES[i]);
 }
 
 void setup() {
@@ -30,17 +51,18 @@ void setup() {
   delay(1500);
   Serial.println("CrowPanel 2.13 desk display - boot");
 
-  epd.begin();
-  drawHello();
-  uint32_t t = millis();
-  bool ok = epd.display(canvas.getBuffer());
-  Serial.printf("Refresh %s after %lu ms\n", ok ? "finished" : "TIMED OUT",
-                (unsigned long)(millis() - t));
-  epd.sleep();
+  pinMode(TRIGGER_BUTTON, INPUT_PULLUP);   // reads LOW when pressed (per Elecrow's example)
+  showRandomLine();
 }
 
 void loop() {
-  static uint32_t n = 0;
-  Serial.printf("alive %lu\n", (unsigned long)n++);
-  delay(5000);
+  // Trigger on press (HIGH -> LOW), with a simple debounce.
+  static int prev = HIGH;
+  int now = digitalRead(TRIGGER_BUTTON);
+  if (prev == HIGH && now == LOW) {
+    delay(30);
+    if (digitalRead(TRIGGER_BUTTON) == LOW) showRandomLine();
+  }
+  prev = now;
+  delay(10);
 }
