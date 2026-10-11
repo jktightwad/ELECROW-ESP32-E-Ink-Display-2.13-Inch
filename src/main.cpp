@@ -69,7 +69,7 @@ void setup() {
   h.onAdd = [](const String& line) {
     if (lines.add(line)) {
       Serial.printf("Line added (%u total)\n", (unsigned)lines.size());
-      netPublishLines(lines.toText());   // keep the broker's retained list in step
+      netPublishLines(lines.toText());   // keep Adafruit IO's copy of the list in step
     }
   };
   h.onShowRandom = []() { pending_random = true; };
