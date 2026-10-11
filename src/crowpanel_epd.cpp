@@ -98,15 +98,12 @@ void CrowPanelEPD::loadLut() {
   send(0x20, LUT_VCOM);
   send(0x21, LUT_WW);
   send(0x24, LUT_BB);
-  // Elecrow's code swaps the 0x22 / 0x23 tables on alternate refreshes.
-  if (!lut_toggle_) {
-    send(0x22, LUT_R22);
-    send(0x23, LUT_R23);
-  } else {
-    send(0x23, LUT_R22);
-    send(0x22, LUT_R23);
-  }
-  lut_toggle_ = !lut_toggle_;
+  // Elecrow's code swaps the 0x22 / 0x23 tables on alternate refreshes, because
+  // it never rewrites the old-image RAM. This driver resets the panel and sets
+  // the old image to white before every refresh (begin()), so the tables stay
+  // fixed. With the swap, every second refresh drew the image and then wiped it.
+  send(0x22, LUT_R22);
+  send(0x23, LUT_R23);
 }
 
 bool CrowPanelEPD::display(const uint8_t* buffer) {
