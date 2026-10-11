@@ -4,7 +4,7 @@
 #include "crowpanel_epd.h"
 #include "line_store.h"
 #include "net.h"
-#include "text_layout.h"
+#include "screen.h"
 
 // Display controller: this unit matches Elecrow's "arduino-v1.2" example code
 // (BUSY low while busy, black/white mode with MCU-loaded waveforms). GxEPD2's
@@ -16,7 +16,6 @@ GFXcanvas1 canvas(CrowPanelEPD::WIDTH, CrowPanelEPD::HEIGHT);  // 1 = black
 LineStore lines;
 
 const uint8_t TRIGGER_BUTTON = KEY_OK;   // press the dial
-const int16_t MARGIN = 6;
 
 // Requests from MQTT are queued here and handled in loop(), so the slow
 // display refresh never runs inside the MQTT callback.
@@ -24,15 +23,8 @@ bool pending_random = false;
 bool pending_text = false;
 String pending_text_value;
 
-// Draws `text` centred on the visible landscape area and refreshes the panel.
-void showText(const char* text) {
-  canvas.setRotation(1);                 // landscape: 250 x 128, visible y = 0..121
-  canvas.fillScreen(0);
-  drawWrappedText(canvas, text, MARGIN, MARGIN,
-                  CrowPanelEPD::HEIGHT - 2 * MARGIN,
-                  CrowPanelEPD::VISIBLE_WIDTH - 2 * MARGIN);
-  canvas.setRotation(0);
-
+// Refreshes the panel with what is on the canvas.
+void refresh() {
   epd.begin();                           // wakes the panel from deep sleep
   uint32_t t = millis();
   bool ok = epd.display(canvas.getBuffer());
@@ -41,7 +33,16 @@ void showText(const char* text) {
                 (unsigned long)(millis() - t));
 }
 
-// Picks a random line, never the same one twice in a row.
+// Shows `text` on its own (MQTT "show" command).
+void showText(const char* text) {
+  canvas.setRotation(1);                 // landscape: 250 x 128, visible y = 0..121
+  if (!drawTextScreen(canvas, text)) Serial.println("Text too long - clipped");
+  canvas.setRotation(0);
+  refresh();
+}
+
+// Picks a random line, never the same one twice in a row, and shows it under
+// the "Tell David:" heading.
 void showRandomLine() {
   static int last = -1;
   if (lines.size() == 0) return;
@@ -51,7 +52,10 @@ void showRandomLine() {
   }
   last = i;
   Serial.printf("Showing line %d: %s\n", i, lines.get(i).c_str());
-  showText(lines.get(i).c_str());
+  canvas.setRotation(1);
+  if (!drawDavidScreen(canvas, lines.get(i).c_str())) Serial.println("Line too long - clipped");
+  canvas.setRotation(0);
+  refresh();
 }
 
 void setup() {
