@@ -159,11 +159,11 @@ void drawDashboardScreen(Adafruit_GFX& gfx, const DashboardInfo& info) {
 void drawBootScreen(Adafruit_GFX& gfx, const BootStep* steps, int count) {
   gfx.fillScreen(0);
   gfx.fillRect(0, 0, SCREEN_W, 16, 1);
-  drawText(gfx, &Barlow_SB13, 4, 3, "STARTING UP", 0, 0);
-  const int16_t row_h = 17, box = 10;
+  drawText(gfx, &Barlow_SB13, 4, 3, "POWERING ON", 0, 0);
+  const int16_t row_h = 20, box = 10;
   for (int i = 0; i < count; i++) {
     const BootStep& st = steps[i];
-    int16_t top = 21 + i * row_h;
+    int16_t top = 23 + i * row_h;
     int16_t bx = 6, by = top;
     // Status box: done = filled with a check, failed = X, active = dot, pending/skipped = empty.
     switch (st.state) {
