@@ -69,7 +69,10 @@ void CrowPanelEPD::begin() {
   digitalWrite(EPD_RST, LOW);  delay(100);
   digitalWrite(EPD_RST, HIGH); delay(100);
 
-  command(0x00); data(0xF7); data(0x8A);                          // panel setting
+  // Panel setting. First byte bit 3 = gate (row) scan direction, bit 2 = source
+  // (column) shift direction. Elecrow uses 0xF7; that drew the image upside down
+  // and mirrored on this unit, so the source direction is reversed (bit 2 cleared).
+  command(0x00); data(0xF3); data(0x8A);
   command(0x01); data(0x03); data(0x00); data(0x3F); data(0x3F); data(0x03);  // power setting
   command(0x03); data(0x00);                                      // power off sequence
   command(0x06); data(0x27); data(0x27); data(0x2F);              // booster soft start
