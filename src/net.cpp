@@ -112,6 +112,19 @@ void netLoop() {
   mqtt.loop();
 }
 
+NetState netWifiState() {
+  return WiFi.status() == WL_CONNECTED ? NetState::Connected : NetState::Connecting;
+}
+
+NetState netMqttState() {
+  if (!strlen(MQTT_HOST)) return NetState::Off;
+  return mqtt.connected() ? NetState::Connected : NetState::Connecting;
+}
+
+String netIp() {
+  return WiFi.status() == WL_CONNECTED ? WiFi.localIP().toString() : String("");
+}
+
 #else  // no secrets.h
 
 bool netBegin(const NetHandlers&) {
@@ -119,5 +132,8 @@ bool netBegin(const NetHandlers&) {
   return false;
 }
 void netLoop() {}
+NetState netWifiState() { return NetState::Off; }
+NetState netMqttState() { return NetState::Off; }
+String netIp() { return String(""); }
 
 #endif
