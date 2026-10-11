@@ -252,9 +252,8 @@ void changeLocation(const String& place) {
 
 // ---------------------------------------------------------------- startup screen
 
-enum BootIndex { B_POWER, B_WIFI, B_CLOCK, B_LOCATION, B_WEATHER, B_MQTT, B_COUNT };
+enum BootIndex { B_WIFI, B_CLOCK, B_LOCATION, B_WEATHER, B_MQTT, B_COUNT };
 BootStep boot_steps[B_COUNT] = {
-  {"Power on", StepState::Pending, ""},
   {"Wi-Fi", StepState::Pending, ""},
   {"Clock", StepState::Pending, ""},
   {"Location", StepState::Pending, ""},
@@ -306,9 +305,6 @@ void setup() {
     location.automatic = true;
   }
 
-  // Startup checklist: first draw is a full refresh, each step after it a fast one.
-  bootStep(B_POWER, StepState::Done, String((unsigned long)lines.size()) + " lines");
-
   NetHandlers h;
   h.onAdd = [](const String& line) {
     if (lines.add(line)) Serial.printf("Line added (%u total)\n", (unsigned)lines.size());
@@ -318,6 +314,7 @@ void setup() {
   h.onLocation = [](const String& place) { pending_location = place; };
   h.onPortal = [](const char* ap_name) { showSetup(ap_name); };
 
+  // Startup checklist: first draw is a full refresh, each step after it a fast one.
   bootStep(B_WIFI, StepState::Active);
   netBegin(h, force_portal);               // may show the Wi-Fi setup screen
   bool online = netWifiConnected();
