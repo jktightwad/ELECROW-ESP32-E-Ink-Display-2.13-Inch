@@ -1,4 +1,5 @@
 #include "net.h"
+#include "command.h"
 
 #if __has_include("secrets.h")
 #include "secrets.h"
@@ -19,8 +20,8 @@
 #ifndef MQTT_FEED
 #define MQTT_FEED "onair-dot-control"
 #endif
-#ifndef CMD_PREFIX
-#define CMD_PREFIX "nodavid:"
+#ifndef DEVICE_ID
+#define DEVICE_ID "nodavid"
 #endif
 #else
 #define HAVE_SECRETS 0
@@ -51,19 +52,13 @@ void onMessage(char* t, uint8_t* payload, unsigned int len) {
     Serial.printf("[AIO] %s: %s\n", t, body.c_str());
     return;
   }
-  if (!body.startsWith(CMD_PREFIX)) return;   // meant for another device on the shared feed
-
-  String cmd = body.substring(strlen(CMD_PREFIX));
-  cmd.trim();
-  Serial.printf("MQTT command: %s\n", cmd.c_str());
-  if (cmd.equalsIgnoreCase("random")) {
-    handlers.onShowRandom();
-  } else if (cmd.startsWith("show ")) {
-    handlers.onShowText(cmd.substring(5));
-  } else if (cmd.startsWith("add ")) {
-    handlers.onAdd(cmd.substring(4));
-  } else {
-    Serial.println("  unknown command (use random, show <text>, add <line>)");
+  Command c = parseCommand(body.c_str(), body.length(), DEVICE_ID);
+  if (c.error.length()) Serial.printf("MQTT command error: %s\n", c.error.c_str());
+  switch (c.type) {
+    case CommandType::Random: Serial.println("MQTT: random"); handlers.onShowRandom(); break;
+    case CommandType::Show:   Serial.println("MQTT: show");   handlers.onShowText(c.text); break;
+    case CommandType::Add:    Serial.println("MQTT: add");    handlers.onAdd(c.text); break;
+    case CommandType::None:   break;   // not for this device
   }
 }
 

@@ -25,19 +25,21 @@ dashes are converted for the display font; other non-ASCII characters (accents, 
 
 - **Load the list onto the board:** PlatformIO sidebar → *Project Tasks* → *crowpanel_213* →
   *Platform* → **Upload Filesystem Image**. Until then the built-in copy in `include/lines.h` is used.
-- **Show a line:** press the dial, or send `nodavid:random` over MQTT (below).
+- **Show a line:** press the dial, or send a `random` command over MQTT (below).
 
 ### MQTT (Adafruit IO, shared feed)
 The display listens on an existing feed (`MQTT_FEED` in `secrets.h`, default `onair-dot-control`)
-and only acts on values that start with `nodavid:`; anything else on the feed is ignored.
+and acts only on JSON commands addressed to its `DEVICE_ID` (default `nodavid`), in the same
+style as the On Air Light firmware. Everything else on the feed is ignored silently.
 
 | Value sent to the feed | Effect |
 |---|---|
-| `nodavid:random` | shows a random line |
-| `nodavid:show <text>` | shows that text once |
-| `nodavid:add <line>` | adds the line to the list stored on the board |
+| `{"deviceId":"nodavid","cmd":"random"}` | shows a random line |
+| `{"deviceId":"nodavid","cmd":"show","text":"Back in 5"}` | shows that text once |
+| `{"deviceId":"nodavid","cmd":"add","text":"A new line"}` | adds the line to the list stored on the board |
 
-- Any other device subscribed to the same feed also receives these values, so it must ignore ones it doesn't recognise. The On Air Light firmware does: `nodavid:` values are not JSON, so it logs a JSON error and changes nothing.
+`"deviceIds":["nodavid", ...]` works too. The On Air Light firmware ignores these, because
+its device ID doesn't match.
 - Adafruit IO error and throttle messages (`<user>/errors`, `<user>/throttle`) are printed to the serial monitor.
 - Lines added over MQTT exist only on the board. Running *Upload Filesystem Image* again replaces them with `data/lines.txt`, so copy any keepers into that file.
 - Port 1883 is unencrypted, so the AIO key travels in plain text on your network.
