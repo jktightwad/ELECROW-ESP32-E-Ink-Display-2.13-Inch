@@ -14,8 +14,8 @@ GFXcanvas1 canvas(CrowPanelEPD::WIDTH, CrowPanelEPD::HEIGHT);  // 1 = black
 
 void drawHello() {
   canvas.fillScreen(0);
-  canvas.drawRect(0, 0, 122, 250, 1);     // outline of the visible area (122 px wide)
-  canvas.setRotation(1);                  // landscape: 250 x 128
+  canvas.setRotation(1);                  // landscape: 250 x 128, visible y = 0..121
+  canvas.drawRect(0, 0, CrowPanelEPD::HEIGHT, CrowPanelEPD::VISIBLE_WIDTH, 1);  // visible-area outline
   canvas.setFont(&FreeMonoBold9pt7b);
   canvas.setTextColor(1);
   canvas.setCursor(10, 30);
