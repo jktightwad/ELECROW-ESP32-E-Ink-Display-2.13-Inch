@@ -44,6 +44,13 @@ void onMessage(char* t, uint8_t* payload, unsigned int len) {
   body.reserve(len);
   for (unsigned int i = 0; i < len; i++) body += (char)payload[i];
   body.trim();
+
+  // Adafruit IO reports rejected publishes/subscribes, throttling and bans here.
+  String tp(t);
+  if (tp.endsWith("/errors") || tp.endsWith("/throttle")) {
+    Serial.printf("[AIO] %s: %s\n", t, body.c_str());
+    return;
+  }
   if (!body.startsWith(CMD_PREFIX)) return;   // meant for another device on the shared feed
 
   String cmd = body.substring(strlen(CMD_PREFIX));
@@ -64,6 +71,8 @@ void connectMqtt() {
   if (mqtt.connect(client_id.c_str(), MQTT_USER, MQTT_PASSWORD)) {
     Serial.printf("MQTT connected, listening on %s\n", feed_topic.c_str());
     mqtt.subscribe(feed_topic.c_str());
+    mqtt.subscribe((String(MQTT_USER) + "/errors").c_str());
+    mqtt.subscribe((String(MQTT_USER) + "/throttle").c_str());
   } else {
     // State codes: see PubSubClient.h (e.g. 4 = bad username/key, 5 = not authorised)
     Serial.printf("MQTT connect failed, state %d\n", mqtt.state());

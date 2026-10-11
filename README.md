@@ -37,7 +37,8 @@ and only acts on values that start with `nodavid:`; anything else on the feed is
 | `nodavid:show <text>` | shows that text once |
 | `nodavid:add <line>` | adds the line to the list stored on the board |
 
-- Any other device subscribed to the same feed also receives these values, so it must ignore ones it doesn't recognise.
+- Any other device subscribed to the same feed also receives these values, so it must ignore ones it doesn't recognise. The On Air Light firmware does: `nodavid:` values are not JSON, so it logs a JSON error and changes nothing.
+- Adafruit IO error and throttle messages (`<user>/errors`, `<user>/throttle`) are printed to the serial monitor.
 - Lines added over MQTT exist only on the board. Running *Upload Filesystem Image* again replaces them with `data/lines.txt`, so copy any keepers into that file.
 - Port 1883 is unencrypted, so the AIO key travels in plain text on your network.
 
