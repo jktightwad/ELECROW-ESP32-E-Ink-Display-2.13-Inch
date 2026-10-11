@@ -1,36 +1,28 @@
 #include <Arduino.h>
-#include "board_pins.h"
-
-#include <SPI.h>
-#include <GxEPD2_4C.h>
+#include <Adafruit_GFX.h>
 #include <Fonts/FreeMonoBold9pt7b.h>
+#include "board_pins.h"
+#include "crowpanel_epd.h"
 
-// Controller: JD79661. Elecrow's README lists two possible controllers (SSD1680Z,
-// JD79661). Hardware tests on this unit showed BUSY is LOW while busy and HIGH when
-// idle, which matches GxEPD2's JD79661 driver and not its SSD1680 drivers (those
-// timed out on every refresh). GxEPD2 supports the JD79661 as the GDEY0213F51 panel,
-// a 4-colour 122x250 display; this unit is sold as black/white, so only
-// black and white are drawn.
-// If a future unit has the SSD1680 instead, use:
-//   #include <GxEPD2_BW.h>
-//   GxEPD2_BW<GxEPD2_213_B74, GxEPD2_213_B74::HEIGHT> display(GxEPD2_213_B74(...));
-GxEPD2_4C<GxEPD2_213c_GDEY0213F51, GxEPD2_213c_GDEY0213F51::HEIGHT> display(
-    GxEPD2_213c_GDEY0213F51(EPD_CS, EPD_DC, EPD_RST, EPD_BUSY));
+// Display controller: this unit matches Elecrow's "arduino-v1.2" example code
+// (BUSY low while busy, black/white mode with MCU-loaded waveforms). GxEPD2's
+// SSD1680 and JD79661 drivers both failed on it, so a small driver based on
+// Elecrow's v1.2 sequence is used instead (src/crowpanel_epd.cpp).
+
+CrowPanelEPD epd;
+GFXcanvas1 canvas(CrowPanelEPD::WIDTH, CrowPanelEPD::HEIGHT);  // 1 = black
 
 void drawHello() {
-  display.setRotation(1);
-  display.setFont(&FreeMonoBold9pt7b);
-  display.setTextColor(GxEPD_BLACK);
-  display.setFullWindow();
-  display.firstPage();
-  do {
-    display.fillScreen(GxEPD_WHITE);
-    display.setCursor(10, 30);
-    display.print("Desk display");
-    display.setCursor(10, 60);
-    display.print("Hello!");
-  } while (display.nextPage());
-  display.hibernate();
+  canvas.fillScreen(0);
+  canvas.drawRect(0, 0, 122, 250, 1);     // outline of the visible area (122 px wide)
+  canvas.setRotation(1);                  // landscape: 250 x 128
+  canvas.setFont(&FreeMonoBold9pt7b);
+  canvas.setTextColor(1);
+  canvas.setCursor(10, 30);
+  canvas.print("Desk display");
+  canvas.setCursor(10, 60);
+  canvas.print("Hello!");
+  canvas.setRotation(0);
 }
 
 void setup() {
@@ -38,25 +30,13 @@ void setup() {
   delay(1500);
   Serial.println("CrowPanel 2.13 desk display - boot");
 
-  // Configure the control pins before GxEPD2 touches them. GxEPD2 writes to
-  // them before calling pinMode, which this ESP32 core rejects with an error.
-  pinMode(EPD_CS, OUTPUT);   digitalWrite(EPD_CS, HIGH);
-  pinMode(EPD_DC, OUTPUT);   digitalWrite(EPD_DC, HIGH);
-  pinMode(EPD_RST, OUTPUT);  digitalWrite(EPD_RST, HIGH);
-  pinMode(EPD_BUSY, INPUT);
-
-  pinMode(EPD_POWER, OUTPUT);
-  digitalWrite(EPD_POWER, HIGH);   // e-paper power rail on (see board_pins.h)
-  delay(100);                      // let the panel power up; Elecrow waits 100ms before reset
-
-  // Diagnostic: on the JD79661, BUSY is LOW while busy and HIGH when idle.
-  Serial.printf("BUSY after power-on: %d\n", digitalRead(EPD_BUSY));
-
-  SPI.begin(EPD_SCK, -1, EPD_MOSI, EPD_CS);
-  display.init(115200);   // also enables GxEPD2 diagnostic output on Serial
-  Serial.printf("BUSY after init: %d\n", digitalRead(EPD_BUSY));
+  epd.begin();
   drawHello();
-  Serial.println("Display drawn");
+  uint32_t t = millis();
+  bool ok = epd.display(canvas.getBuffer());
+  Serial.printf("Refresh %s after %lu ms\n", ok ? "finished" : "TIMED OUT",
+                (unsigned long)(millis() - t));
+  epd.sleep();
 }
 
 void loop() {
