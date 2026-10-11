@@ -13,11 +13,28 @@ Firmware for the **Elecrow CrowPanel ESP32 E-Paper HMI 2.13"** (122x250, black/w
 
 ## Status
 - [x] Upload and serial output working
-- [x] Pin map in `include/board_pins.h` taken from Elecrow's official example code
 - [x] Display driver (`src/crowpanel_epd.cpp`), based on Elecrow's v1.2 example; orientation and visible area confirmed on hardware
-- [x] Random line on dial press, list stored on the board (LittleFS)
-- [ ] MQTT: confirm on hardware with your broker
-- [ ] Wi-Fi + content (clock/weather/etc.)
+- [x] Random "Tell David" line on dial press, list stored on the board (LittleFS)
+- [ ] Weather dashboard, clock, fast refresh, Wi-Fi setup hotspot: written, not yet confirmed on hardware
+
+## Wi-Fi setup
+On boot the display tries the Wi-Fi saved on the board, then `WIFI_SSID` from `secrets.h` (if set).
+If neither connects, it opens an open hotspot **CrowPanel-Setup** for 5 minutes and shows the steps on
+screen: join it from a phone, pick your network on the page that opens (or browse to 192.168.4.1).
+To change networks later, **hold the Back button while the board starts** (press Reset with Back held).
+
+## Weather dashboard
+- Data: [Open-Meteo](https://open-meteo.com) (free for non-commercial use, no API key): current
+  temperature, feels-like, today's high/low, humidity, wind, chance of precipitation, sunrise/sunset.
+  Units: °F and mph.
+- Clock updates every minute with a **fast refresh** (only changed pixels). Every 10 minutes the
+  weather is fetched and the screen gets a **full refresh**, which also clears fast-refresh ghosting.
+- Shows "offline" if the weather is more than 30 minutes old.
+- Location: Albany, NY by default. Change it over MQTT:
+  `{"deviceId":"nodavid","cmd":"location","text":"Saratoga Springs, NY"}`. The name is looked up with
+  Open-Meteo's geocoding ("Town, ST" works) and saved on the board.
+- Fonts and icons are generated from TrueType files by `tools/make_fonts.py` (needs Python + Pillow);
+  the generated headers in `include/fonts/` are committed, so you only re-run it to change sizes or icons.
 
 ## Random lines
 The list lives in `data/lines.txt`: plain text, one entry per line. Curly quotes, "…" and
@@ -28,8 +45,7 @@ dashes are converted for the display font; other non-ASCII characters (accents, 
 - **Show a line:** press the dial, or send a `random` command over MQTT (below). It appears under a
   "Tell David:" heading for 10 seconds (`MESSAGE_SHOW_MS` in `src/main.cpp`), then the dashboard returns.
   MQTT `show` text gets the same 10 seconds.
-- **Dashboard:** currently a placeholder showing Wi-Fi/MQTT status, IP address and list size. It is
-  redrawn when the status changes, at most every 30 seconds, since each redraw is a full refresh.
+- **Dashboard:** the weather dashboard (below).
 
 ### MQTT (Adafruit IO, shared feed)
 The display listens on an existing feed (`MQTT_FEED` in `secrets.h`, default `onair-dot-control`)
@@ -41,6 +57,7 @@ style as the On Air Light firmware. Everything else on the feed is ignored silen
 | `{"deviceId":"nodavid","cmd":"random"}` | shows a random line |
 | `{"deviceId":"nodavid","cmd":"show","text":"Back in 5"}` | shows that text once |
 | `{"deviceId":"nodavid","cmd":"add","text":"A new line"}` | adds the line to the list stored on the board |
+| `{"deviceId":"nodavid","cmd":"location","text":"Albany, NY"}` | changes the weather location |
 
 `"deviceIds":["nodavid", ...]` works too. The On Air Light firmware ignores these, because
 its device ID doesn't match.
@@ -56,3 +73,6 @@ GPL-3.0. See [LICENSE](LICENSE).
 
 `src/crowpanel_epd.cpp` contains display register values and waveform tables taken from
 Elecrow's example code for this board, which is published without a license.
+
+Fonts: Barlow (SIL OFL 1.1, `tools/fonts/OFL-Barlow.txt`) and Weather Icons by Erik Flowers
+(SIL OFL 1.1, `tools/fonts/OFL-WeatherIcons.txt`); `include/fonts/` holds bitmaps generated from them.

@@ -27,6 +27,12 @@ class CrowPanelEPD {
   // Returns false if the panel did not finish within the timeout.
   bool display(const uint8_t* buffer);
 
+  // Fast refresh (Elecrow's "DU" waveform): only pixels that differ between
+  // `previous` (what the screen shows now) and `buffer` change, with little
+  // flashing. Repeated fast refreshes leave faint ghosting, so do a full
+  // display() every so often. Same bit convention as display(). Call begin() first.
+  bool displayFast(const uint8_t* buffer, const uint8_t* previous);
+
   // Puts the controller into deep sleep. Call begin() before the next display().
   void sleep();
 
@@ -35,5 +41,6 @@ class CrowPanelEPD {
   void command(uint8_t c);
   void data(uint8_t d);
   void loadLut();
+  void sendLut(uint8_t reg, const uint8_t* head, uint8_t head_len);
   bool waitWhileBusy(uint32_t timeout_ms);
 };

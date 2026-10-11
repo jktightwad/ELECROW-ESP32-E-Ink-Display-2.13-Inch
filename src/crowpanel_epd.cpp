@@ -18,6 +18,13 @@ const uint8_t LUT_R22[LUT_HEAD_LEN]  = {0x01, 0x20, 0x14, 0x14, 0x01, 0x00, 0x00
 const uint8_t LUT_R23[LUT_HEAD_LEN]  = {0x01, 0x10, 0x14, 0x14, 0x01, 0x00, 0x00, 0x01};
 const uint8_t LUT_BB[LUT_HEAD_LEN]   = {0x01, 0x90, 0x14, 0x14, 0x01, 0x00, 0x00, 0x01};  // reg 0x24
 
+// "DU" (fast) waveform, also from Elecrow's example (lut_DU). Pixels that stay
+// the same (0x21, 0x24) are not driven, so only changed pixels move.
+const uint8_t DU_HEAD_LEN = 5;
+const uint8_t DU_NONE[DU_HEAD_LEN] = {0x01, 0x00, 0x14, 0x01, 0x01};   // regs 0x20, 0x21, 0x24
+const uint8_t DU_R22[DU_HEAD_LEN]  = {0x01, 0x80, 0x14, 0x01, 0x01};
+const uint8_t DU_R23[DU_HEAD_LEN]  = {0x01, 0x40, 0x14, 0x01, 0x01};
+
 }  // namespace
 
 void CrowPanelEPD::writeByte(uint8_t b) {
@@ -90,11 +97,13 @@ void CrowPanelEPD::begin() {
   for (size_t i = 0; i < BUFFER_BYTES; i++) data(0xFF);
 }
 
+void CrowPanelEPD::sendLut(uint8_t reg, const uint8_t* head, uint8_t head_len) {
+  command(reg);
+  for (uint8_t i = 0; i < LUT_LEN; i++) data(i < head_len ? head[i] : 0x00);
+}
+
 void CrowPanelEPD::loadLut() {
-  auto send = [this](uint8_t reg, const uint8_t* head) {
-    command(reg);
-    for (uint8_t i = 0; i < LUT_LEN; i++) data(i < LUT_HEAD_LEN ? head[i] : 0x00);
-  };
+  auto send = [this](uint8_t reg, const uint8_t* head) { sendLut(reg, head, LUT_HEAD_LEN); };
   send(0x20, LUT_VCOM);
   send(0x21, LUT_WW);
   send(0x24, LUT_BB);
@@ -112,6 +121,21 @@ bool CrowPanelEPD::display(const uint8_t* buffer) {
   for (size_t i = 0; i < BUFFER_BYTES; i++) data(~buffer[i]);  // panel: 1 = white
   loadLut();
   command(0x17); data(0xA5);                       // auto sequence: power on, refresh, power off
+  return waitWhileBusy(30000);
+}
+
+bool CrowPanelEPD::displayFast(const uint8_t* buffer, const uint8_t* previous) {
+  command(0x50); data(0xD7);
+  command(0x10);                                   // old image: what is on the screen now
+  for (size_t i = 0; i < BUFFER_BYTES; i++) data(~previous[i]);
+  command(0x13);                                   // new image
+  for (size_t i = 0; i < BUFFER_BYTES; i++) data(~buffer[i]);
+  sendLut(0x20, DU_NONE, DU_HEAD_LEN);
+  sendLut(0x21, DU_NONE, DU_HEAD_LEN);
+  sendLut(0x24, DU_NONE, DU_HEAD_LEN);
+  sendLut(0x22, DU_R22, DU_HEAD_LEN);
+  sendLut(0x23, DU_R23, DU_HEAD_LEN);
+  command(0x17); data(0xA5);
   return waitWhileBusy(30000);
 }
 

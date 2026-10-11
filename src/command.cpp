@@ -37,12 +37,15 @@ Command parseCommand(const char* payload, size_t len, const char* device_id) {
   const char* text = obj["text"] | "";
   if (strcasecmp(cmd, "random") == 0) {
     out.type = CommandType::Random;
-  } else if (strcasecmp(cmd, "show") == 0 || strcasecmp(cmd, "add") == 0) {
+  } else if (strcasecmp(cmd, "show") == 0 || strcasecmp(cmd, "add") == 0 ||
+             strcasecmp(cmd, "location") == 0) {
     if (!*text) { out.error = String("\"") + cmd + "\" needs a \"text\" value"; return out; }
-    out.type = (strcasecmp(cmd, "show") == 0) ? CommandType::Show : CommandType::Add;
+    out.type = (strcasecmp(cmd, "show") == 0)  ? CommandType::Show
+             : (strcasecmp(cmd, "add") == 0)   ? CommandType::Add
+                                               : CommandType::Location;
     out.text = text;
   } else {
-    out.error = String("unknown cmd \"") + cmd + "\" (use random, show, add)";
+    out.error = String("unknown cmd \"") + cmd + "\" (use random, show, add, location)";
   }
   return out;
 }
