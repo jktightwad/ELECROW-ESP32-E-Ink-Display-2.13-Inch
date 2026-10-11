@@ -25,20 +25,20 @@ dashes are converted for the display font; other non-ASCII characters (accents, 
 
 - **Load the list onto the board:** PlatformIO sidebar → *Project Tasks* → *crowpanel_213* →
   *Platform* → **Upload Filesystem Image**. Until then the built-in copy in `include/lines.h` is used.
-- **Show a line:** press the dial, or use MQTT (below).
+- **Show a line:** press the dial, or send `nodavid:random` over MQTT (below).
 
-### MQTT (Adafruit IO)
-Create three feeds on io.adafruit.com and put their keys in `secrets.h`:
+### MQTT (Adafruit IO, shared feed)
+The display listens on an existing feed (`MQTT_FEED` in `secrets.h`, default `onair-dot-control`)
+and only acts on values that start with `nodavid:`; anything else on the feed is ignored.
 
-| Feed (default key) | Value | Effect |
-|---|---|---|
-| `nodavid-lines` | whole list, one entry per line | replaces the list and saves it on the board |
-| `nodavid-add` | one line | appends it, saves, and republishes `nodavid-lines` |
-| `nodavid-show` | `random` (or `1`, or empty) / any other text | shows a random line / shows that text once |
+| Value sent to the feed | Effect |
+|---|---|
+| `nodavid:random` | shows a random line |
+| `nodavid:show <text>` | shows that text once |
+| `nodavid:add <line>` | adds the line to the list stored on the board |
 
-- Turn **history off** for `nodavid-lines` (feed settings). With history on, Adafruit IO caps values at about 1KB; the list is larger.
-- On connect the display fetches the latest `nodavid-lines` value (Adafruit IO `/get`), so that feed is the master copy.
-- Optional: set `FEED_STATUS` to an existing feed (e.g. a debug feed) to get an "online" message on connect.
+- Any other device subscribed to the same feed also receives these values, so it must ignore ones it doesn't recognise.
+- Lines added over MQTT exist only on the board. Running *Upload Filesystem Image* again replaces them with `data/lines.txt`, so copy any keepers into that file.
 - Port 1883 is unencrypted, so the AIO key travels in plain text on your network.
 
 ## Notes

@@ -16,17 +16,11 @@
 #ifndef MQTT_PASSWORD
 #define MQTT_PASSWORD ""
 #endif
-#ifndef FEED_LINES
-#define FEED_LINES "nodavid-lines"
+#ifndef MQTT_FEED
+#define MQTT_FEED "onair-dot-control"
 #endif
-#ifndef FEED_ADD
-#define FEED_ADD "nodavid-add"
-#endif
-#ifndef FEED_SHOW
-#define FEED_SHOW "nodavid-show"
-#endif
-#ifndef FEED_STATUS
-#define FEED_STATUS ""
+#ifndef CMD_PREFIX
+#define CMD_PREFIX "nodavid:"
 #endif
 #else
 #define HAVE_SECRETS 0
@@ -42,37 +36,34 @@ WiFiClient wifi_client;
 PubSubClient mqtt(wifi_client);
 NetHandlers handlers;
 String client_id;
+String feed_topic;
 uint32_t last_attempt = 0;
-
-String feedTopic(const char* key) { return String(MQTT_USER) + "/feeds/" + key; }
 
 void onMessage(char* t, uint8_t* payload, unsigned int len) {
   String body;
   body.reserve(len);
   for (unsigned int i = 0; i < len; i++) body += (char)payload[i];
-  String tp(t);
-  Serial.printf("MQTT %s (%u bytes)\n", t, len);
-  if (tp == feedTopic(FEED_LINES)) {
-    handlers.onLines(body);
-  } else if (tp == feedTopic(FEED_ADD)) {
-    handlers.onAdd(body);
-  } else if (tp == feedTopic(FEED_SHOW)) {
-    String cmd = body;
-    cmd.trim();
-    if (cmd.length() == 0 || cmd == "1" || cmd.equalsIgnoreCase("random")) handlers.onShowRandom();
-    else handlers.onShowText(body);
+  body.trim();
+  if (!body.startsWith(CMD_PREFIX)) return;   // meant for another device on the shared feed
+
+  String cmd = body.substring(strlen(CMD_PREFIX));
+  cmd.trim();
+  Serial.printf("MQTT command: %s\n", cmd.c_str());
+  if (cmd.equalsIgnoreCase("random")) {
+    handlers.onShowRandom();
+  } else if (cmd.startsWith("show ")) {
+    handlers.onShowText(cmd.substring(5));
+  } else if (cmd.startsWith("add ")) {
+    handlers.onAdd(cmd.substring(4));
+  } else {
+    Serial.println("  unknown command (use random, show <text>, add <line>)");
   }
 }
 
 void connectMqtt() {
   if (mqtt.connect(client_id.c_str(), MQTT_USER, MQTT_PASSWORD)) {
-    Serial.println("MQTT connected");
-    mqtt.subscribe(feedTopic(FEED_LINES).c_str());
-    mqtt.subscribe(feedTopic(FEED_ADD).c_str());
-    mqtt.subscribe(feedTopic(FEED_SHOW).c_str());
-    // Ask Adafruit IO to resend the latest list (its alternative to retained messages).
-    mqtt.publish((feedTopic(FEED_LINES) + "/get").c_str(), "");
-    if (strlen(FEED_STATUS)) mqtt.publish(feedTopic(FEED_STATUS).c_str(), "nodavid display online");
+    Serial.printf("MQTT connected, listening on %s\n", feed_topic.c_str());
+    mqtt.subscribe(feed_topic.c_str());
   } else {
     // State codes: see PubSubClient.h (e.g. 4 = bad username/key, 5 = not authorised)
     Serial.printf("MQTT connect failed, state %d\n", mqtt.state());
@@ -87,10 +78,11 @@ bool netBegin(const NetHandlers& h) {
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);   // connects in the background
   client_id = "crowpanel-" + WiFi.macAddress();
   client_id.replace(":", "");
+  feed_topic = String(MQTT_USER) + "/feeds/" + MQTT_FEED;
   if (strlen(MQTT_HOST)) {
     mqtt.setServer(MQTT_HOST, MQTT_PORT);
     mqtt.setCallback(onMessage);
-    mqtt.setBufferSize(8192);             // whole list arrives as one message
+    mqtt.setBufferSize(2048);             // Adafruit IO values are at most ~1KB with feed history on
   }
   Serial.printf("Wi-Fi: connecting to %s\n", WIFI_SSID);
   return true;
@@ -116,10 +108,6 @@ void netLoop() {
   mqtt.loop();
 }
 
-void netPublishLines(const String& text) {
-  if (mqtt.connected()) mqtt.publish(feedTopic(FEED_LINES).c_str(), text.c_str());
-}
-
 #else  // no secrets.h
 
 bool netBegin(const NetHandlers&) {
@@ -127,6 +115,5 @@ bool netBegin(const NetHandlers&) {
   return false;
 }
 void netLoop() {}
-void netPublishLines(const String&) {}
 
 #endif
