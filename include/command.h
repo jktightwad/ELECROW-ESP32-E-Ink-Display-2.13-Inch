@@ -6,10 +6,11 @@
 //   {"deviceId":"nodavid","cmd":"random"}
 //   {"deviceId":"nodavid","cmd":"show","text":"Back in 5"}
 //   {"deviceId":"nodavid","cmd":"add","text":"A new line"}
+//   {"deviceId":"nodavid","cmd":"location","text":"Albany, NY"}
 // "deviceIds":["nodavid", ...] also works. A message whose JSON is wrapped in a
 // "value" string (as the On Air Light firmware also accepts) is unwrapped first.
 // Messages for other devices, or that aren't JSON, are ignored silently.
-enum class CommandType { None, Random, Show, Add };
+enum class CommandType { None, Random, Show, Add, Location };
 
 struct Command {
   CommandType type = CommandType::None;
