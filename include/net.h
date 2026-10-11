@@ -13,3 +13,9 @@ struct NetHandlers {
 // Returns false if there is no secrets.h (network features off).
 bool netBegin(const NetHandlers& handlers);
 void netLoop();
+
+// Connection status, for the dashboard.
+enum class NetState { Off, Connecting, Connected };
+NetState netWifiState();
+NetState netMqttState();
+String netIp();

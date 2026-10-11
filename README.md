@@ -25,7 +25,11 @@ dashes are converted for the display font; other non-ASCII characters (accents, 
 
 - **Load the list onto the board:** PlatformIO sidebar → *Project Tasks* → *crowpanel_213* →
   *Platform* → **Upload Filesystem Image**. Until then the built-in copy in `include/lines.h` is used.
-- **Show a line:** press the dial, or send a `random` command over MQTT (below).
+- **Show a line:** press the dial, or send a `random` command over MQTT (below). It appears under a
+  "Tell David:" heading for 10 seconds (`MESSAGE_SHOW_MS` in `src/main.cpp`), then the dashboard returns.
+  MQTT `show` text gets the same 10 seconds.
+- **Dashboard:** currently a placeholder showing Wi-Fi/MQTT status, IP address and list size. It is
+  redrawn when the status changes, at most every 30 seconds, since each redraw is a full refresh.
 
 ### MQTT (Adafruit IO, shared feed)
 The display listens on an existing feed (`MQTT_FEED` in `secrets.h`, default `onair-dot-control`)

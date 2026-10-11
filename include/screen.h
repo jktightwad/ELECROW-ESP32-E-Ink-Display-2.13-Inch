@@ -8,5 +8,14 @@
 // Returns false if the line had to be clipped.
 bool drawDavidScreen(Adafruit_GFX& gfx, const char* line);
 
+// Placeholder dashboard: connection status and list size.
+struct DashboardInfo {
+  const char* wifi;    // e.g. "connected", "connecting...", "off"
+  const char* mqtt;
+  const char* ip;      // "" if none
+  size_t line_count;
+};
+void drawDashboardScreen(Adafruit_GFX& gfx, const DashboardInfo& info);
+
 // `text` word-wrapped and fitted to the whole screen.
 bool drawTextScreen(Adafruit_GFX& gfx, const char* text);
