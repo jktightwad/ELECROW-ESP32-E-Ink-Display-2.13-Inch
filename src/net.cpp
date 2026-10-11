@@ -3,6 +3,22 @@
 #if __has_include("secrets.h")
 #include "secrets.h"
 #define HAVE_SECRETS 1
+// Defaults for settings missing from an older secrets.h
+#ifndef MQTT_HOST
+#define MQTT_HOST ""
+#endif
+#ifndef MQTT_PORT
+#define MQTT_PORT 1883
+#endif
+#ifndef MQTT_USER
+#define MQTT_USER ""
+#endif
+#ifndef MQTT_PASSWORD
+#define MQTT_PASSWORD ""
+#endif
+#ifndef MQTT_TOPIC_PREFIX
+#define MQTT_TOPIC_PREFIX "desk"
+#endif
 #else
 #define HAVE_SECRETS 0
 #endif
