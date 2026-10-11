@@ -29,6 +29,9 @@ bool getJson(const String& url, JsonDocument& doc, String& error) {
   client.setInsecure();   // encrypted, but the server certificate is not checked
   HTTPClient http;
   http.setTimeout(10000);
+  // HTTP/1.0 so the reply isn't chunked; the raw stream of a chunked reply
+  // contains chunk-size lines that break JSON parsing.
+  http.useHTTP10(true);
   if (!http.begin(client, url)) { error = "bad URL"; return false; }
   int status = http.GET();
   if (status != HTTP_CODE_OK) {
@@ -36,9 +39,13 @@ bool getJson(const String& url, JsonDocument& doc, String& error) {
     http.end();
     return false;
   }
-  DeserializationError e = deserializeJson(doc, http.getStream());
+  String body = http.getString();
   http.end();
-  if (e) { error = String("JSON: ") + e.c_str(); return false; }
+  DeserializationError e = deserializeJson(doc, body);
+  if (e) {
+    error = String("JSON: ") + e.c_str() + " (reply starts: " + body.substring(0, 80) + ")";
+    return false;
+  }
   return true;
 }
 
