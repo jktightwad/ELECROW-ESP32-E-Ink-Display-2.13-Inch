@@ -22,7 +22,7 @@ class CrowPanelEPD {
   // Powers the panel, resets it and loads its configuration.
   void begin();
 
-  // Full refresh. In `buffer`, a 1 bit is drawn BLACK and a 0 bit WHITE
+  // Full refresh. Call begin() first (after power-up or sleep()). In `buffer`, a 1 bit is drawn BLACK and a 0 bit WHITE
   // (GFXcanvas1 convention: draw with colour 1 for black).
   // Returns false if the panel did not finish within the timeout.
   bool display(const uint8_t* buffer);
@@ -36,5 +36,4 @@ class CrowPanelEPD {
   void data(uint8_t d);
   void loadLut();
   bool waitWhileBusy(uint32_t timeout_ms);
-  bool lut_toggle_ = false;
 };
