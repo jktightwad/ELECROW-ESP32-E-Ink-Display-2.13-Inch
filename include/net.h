@@ -28,3 +28,5 @@ void netBegin(const NetHandlers& handlers, bool force_portal);
 void netLoop();
 
 bool netWifiConnected();
+bool netMqttEnabled();      // Adafruit IO details present in secrets.h
+bool netMqttConnected();

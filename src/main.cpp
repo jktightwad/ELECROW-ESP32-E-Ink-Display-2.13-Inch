@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <Adafruit_GFX.h>
 #include <time.h>
+#include <WiFi.h>
 #include "board_pins.h"
 #include "crowpanel_epd.h"
 #include "line_store.h"
@@ -39,6 +40,7 @@ uint32_t weather_tried_at = 0;
 bool weather_tried = false;
 uint32_t ip_checked_at = 0;
 bool ip_checked = false;
+const char* location_source = "";    // "by IP", "default" or "fixed", for the startup screen
 
 // Last frame sent to the panel, needed for fast refreshes.
 uint8_t prev_frame[CrowPanelEPD::BUFFER_BYTES];
@@ -155,6 +157,7 @@ bool resolveLocation() {
     if (locateByIp(loc, error)) {
       location = loc;
       saveLocation(location);
+      location_source = "by IP";
       return true;
     }
     Serial.printf("IP location failed (%s) - using %s\n", error.c_str(), DEFAULT_LOCATION);
@@ -164,6 +167,7 @@ bool resolveLocation() {
     }
     loc.automatic = true;                // keep trying the IP lookup later
     location = loc;
+    location_source = "default";
     return true;
   }
   if (!geocode(location.label, loc, error)) {
@@ -172,6 +176,7 @@ bool resolveLocation() {
   }
   location = loc;
   saveLocation(location);
+  location_source = "fixed";
   return true;
 }
 
@@ -245,6 +250,42 @@ void changeLocation(const String& place) {
   if (screen == Screen::Dashboard) showDashboard(true);
 }
 
+// ---------------------------------------------------------------- startup screen
+
+enum BootIndex { B_POWER, B_WIFI, B_CLOCK, B_LOCATION, B_WEATHER, B_MQTT, B_COUNT };
+BootStep boot_steps[B_COUNT] = {
+  {"Power on", StepState::Pending, ""},
+  {"Wi-Fi", StepState::Pending, ""},
+  {"Clock", StepState::Pending, ""},
+  {"Location", StepState::Pending, ""},
+  {"Weather", StepState::Pending, ""},
+  {"Messages (MQTT)", StepState::Pending, ""},
+};
+
+// Updates one step and redraws the checklist (fast refresh after the first draw).
+void bootStep(int i, StepState state, const String& detail = "") {
+  boot_steps[i].state = state;
+  boot_steps[i].detail = detail;
+  Serial.printf("[boot] %s: %s %s\n", boot_steps[i].label,
+                state == StepState::Done ? "done" : state == StepState::Failed ? "FAILED" :
+                state == StepState::Active ? "..." : state == StepState::Skipped ? "skipped" : "",
+                detail.c_str());
+  canvas.setRotation(1);
+  drawBootScreen(canvas, boot_steps, B_COUNT);
+  canvas.setRotation(0);
+  refresh(false);
+}
+
+// Waits for `done()` (while servicing the network) for up to `timeout_ms`.
+bool waitFor(bool (*done)(), uint32_t timeout_ms) {
+  uint32_t start = millis();
+  while (!done() && millis() - start < timeout_ms) {
+    netLoop();
+    delay(50);
+  }
+  return done();
+}
+
 // ---------------------------------------------------------------- setup / loop
 
 void setup() {
@@ -264,7 +305,9 @@ void setup() {
     location.valid = false;
     location.automatic = true;
   }
-  showDashboard(true);                     // placeholders until data arrives
+
+  // Startup checklist: first draw is a full refresh, each step after it a fast one.
+  bootStep(B_POWER, StepState::Done, String((unsigned long)lines.size()) + " lines");
 
   NetHandlers h;
   h.onAdd = [](const String& line) {
@@ -274,9 +317,50 @@ void setup() {
   h.onShowText = [](const String& text) { pending_text_value = text; pending_text = true; };
   h.onLocation = [](const String& place) { pending_location = place; };
   h.onPortal = [](const char* ap_name) { showSetup(ap_name); };
-  netBegin(h, force_portal);
+
+  bootStep(B_WIFI, StepState::Active);
+  netBegin(h, force_portal);               // may show the Wi-Fi setup screen
+  bool online = netWifiConnected();
+  if (online) bootStep(B_WIFI, StepState::Done, WiFi.SSID() + " (" + WiFi.localIP().toString() + ")");
+  else bootStep(B_WIFI, StepState::Failed, "not connected");
 
   configTime(0, 0, "pool.ntp.org", "time.nist.gov");   // UTC; the local offset comes from Open-Meteo
+  if (online) {
+    bootStep(B_CLOCK, StepState::Active);
+    bool synced = waitFor([]() { return time(nullptr) > 1700000000; }, 15000);
+    bootStep(B_CLOCK, synced ? StepState::Done : StepState::Failed, synced ? "synced" : "no time server");
+
+    bootStep(B_LOCATION, StepState::Active);
+    if (location.automatic || !location.valid) {
+      if (resolveLocation()) bootStep(B_LOCATION, StepState::Done, location.label + " (" + location_source + ")");
+      else bootStep(B_LOCATION, StepState::Failed, "lookup failed");
+    } else {
+      bootStep(B_LOCATION, StepState::Done, location.label + " (fixed)");
+    }
+
+    bootStep(B_WEATHER, StepState::Active);
+    if (updateWeather()) {
+      bootStep(B_WEATHER, StepState::Done,
+               String((int)lroundf(weather.temp)) + "~F, " + weatherLabel(weather.code));
+    } else {
+      bootStep(B_WEATHER, StepState::Failed, "will retry");
+    }
+
+    if (netMqttEnabled()) {
+      bootStep(B_MQTT, StepState::Active);
+      bool ok = waitFor([]() { return netMqttConnected(); }, 15000);
+      bootStep(B_MQTT, ok ? StepState::Done : StepState::Failed, ok ? "connected" : "will retry");
+    } else {
+      bootStep(B_MQTT, StepState::Skipped, "not set up");
+    }
+  } else {
+    bootStep(B_CLOCK, StepState::Skipped, "offline");
+    for (int i : {B_LOCATION, B_WEATHER, B_MQTT}) boot_steps[i] = {boot_steps[i].label, StepState::Skipped, "offline"};
+    bootStep(B_MQTT, StepState::Skipped, "offline");
+  }
+
+  delay(3000);                             // leave the checklist up briefly
+  showDashboard(true);
 }
 
 void loop() {
