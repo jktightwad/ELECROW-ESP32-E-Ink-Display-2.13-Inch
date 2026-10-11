@@ -34,18 +34,24 @@ static void data(uint8_t d) {
   writeByte(d);
 }
 
-// Waits while BUSY is HIGH. Returns true if it went LOW within timeout_ms.
-static bool waitBusy(const char* step, uint32_t timeout_ms) {
+// Watches BUSY for window_ms and prints every level change with its time, so
+// the log shows the real behaviour whichever way the BUSY polarity works.
+// If stop_when_low is true, returns as soon as BUSY reads LOW.
+static void watchBusy(const char* step, uint32_t window_ms, bool stop_when_low) {
   uint32_t start = millis();
-  while (digitalRead(EPD_BUSY) == HIGH) {
-    if (millis() - start > timeout_ms) {
-      Serial.printf("  %-12s BUSY still HIGH after %lu ms (TIMEOUT)\n", step, (unsigned long)timeout_ms);
-      return false;
+  int level = digitalRead(EPD_BUSY);
+  Serial.printf("  %-10s t=0ms BUSY=%d\n", step, level);
+  if (stop_when_low && level == LOW) return;
+  while (millis() - start < window_ms) {
+    int now = digitalRead(EPD_BUSY);
+    if (now != level) {
+      level = now;
+      Serial.printf("  %-10s t=%lums BUSY=%d\n", step, (unsigned long)(millis() - start), level);
+      if (stop_when_low && level == LOW) return;
     }
     delay(1);
   }
-  Serial.printf("  %-12s BUSY low after %lu ms\n", step, (unsigned long)(millis() - start));
-  return true;
+  Serial.printf("  %-10s no further change by t=%lums (BUSY=%d)\n", step, (unsigned long)window_ms, level);
 }
 
 void setup() {
@@ -60,19 +66,20 @@ void setup() {
   pinMode(EPD_RST, OUTPUT);  digitalWrite(EPD_RST, HIGH);
   pinMode(EPD_BUSY, INPUT);
 
-  Serial.printf("BUSY before power-on: %d\n", digitalRead(EPD_BUSY));
+  // Power-cycle the panel so it starts from a known state
   pinMode(EPD_POWER, OUTPUT);
+  digitalWrite(EPD_POWER, LOW);
+  watchBusy("power off", 1000, false);
   digitalWrite(EPD_POWER, HIGH);
-  delay(100);
-  Serial.printf("BUSY 100ms after power-on: %d\n", digitalRead(EPD_BUSY));
+  watchBusy("power on", 1000, false);
 
   // Hardware reset
   digitalWrite(EPD_RST, LOW);  delay(10);
   digitalWrite(EPD_RST, HIGH); delay(10);
-  waitBusy("hw reset", 3000);
+  watchBusy("hw reset", 5000, false);
 
   command(0x12);                       // software reset
-  waitBusy("sw reset", 3000);
+  watchBusy("sw reset", 3000, false);
 
   command(0x01);                       // driver output control: 250 gate lines
   data(0xF9); data(0x00); data(0x00);
@@ -83,7 +90,7 @@ void setup() {
   command(0x18); data(0x80);           // internal temperature sensor
   command(0x4E); data(0x00);           // RAM X counter
   command(0x4F); data(0x00); data(0x00);  // RAM Y counter
-  waitBusy("init", 3000);
+  watchBusy("init", 1000, false);
 
   // Image: bands 25 rows tall, alternating black (0x00) and white (0xFF)
   command(0x24);
@@ -95,11 +102,10 @@ void setup() {
 
   command(0x22); data(0xF7);           // full update sequence
   command(0x20);                       // activate
-  bool ok = waitBusy("refresh", 20000);
+  watchBusy("refresh", 20000, false);
 
   command(0x10); data(0x01);           // deep sleep
-  Serial.println(ok ? "RESULT: refresh completed - check the screen for stripes"
-                    : "RESULT: refresh did not complete");
+  Serial.println("=== TEST COMPLETE - note whether the screen shows stripes ===");
 }
 
 void loop() {
