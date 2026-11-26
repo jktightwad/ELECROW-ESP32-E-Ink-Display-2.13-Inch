@@ -59,7 +59,8 @@ At start the display scans and joins the **strongest known network in range**. K
 - networks saved on the board (`/wifi.txt`, up to 10, most recently used first). Every network it
   connects to is saved, including ones set up through the hotspot, so they survive reboots and
   firmware uploads (but not *Upload Filesystem Image*, which replaces the file system);
-- networks listed in `WIFI_NETWORKS` in `secrets.h` (see `secrets.example.h`).
+- networks listed in `WIFI_NETWORKS` in `secrets.h` (see `secrets.example.h`). A build from your PC
+  also saves these on the board, so release builds (which have no `secrets.h`) know them.
 
 If none is in range, it opens an open hotspot **CrowPanel-Setup** for 5 minutes and shows the steps on
 screen: join it from a phone, pick your network on the page that opens (or browse to 192.168.4.1).

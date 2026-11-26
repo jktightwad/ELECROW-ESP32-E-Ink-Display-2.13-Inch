@@ -36,3 +36,20 @@ void WifiStore::remember(const String& ssid, const String& pass) {
   save();
   Serial.printf("Wi-Fi list: saved \"%s\" (%u networks)\n", ssid.c_str(), (unsigned)nets_.size());
 }
+
+bool WifiStore::addIfMissing(const String& ssid, const String& pass) {
+  if (!ssid.length()) return false;
+  for (WifiCred& n : nets_) {
+    if (n.ssid == ssid) {
+      if (n.pass == pass) return false;
+      n.pass = pass;                     // secrets.h has a newer password
+      save();
+      return true;
+    }
+  }
+  if (nets_.size() >= MAX_NETWORKS) return false;
+  nets_.push_back({ssid, pass});
+  save();
+  Serial.printf("Wi-Fi list: saved \"%s\" from secrets.h\n", ssid.c_str());
+  return true;
+}

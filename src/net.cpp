@@ -92,6 +92,14 @@ void connectWifi(bool force_portal) {
   WiFi.setAutoReconnect(true);
   wifi_store.load();
   importEspSavedNetwork();
+  // Builds from your PC: save the networks in secrets.h on the board, so
+  // release builds (which have no secrets.h) know them too.
+#ifdef WIFI_NETWORKS
+  for (const BuiltinNet& n : BUILTIN_NETWORKS) wifi_store.addIfMissing(n.ssid, n.pass);
+#endif
+#ifdef WIFI_SSID
+  wifi_store.addIfMissing(WIFI_SSID, WIFI_PASSWORD);
+#endif
 
   if (!force_portal) {
     addKnownNetworks();

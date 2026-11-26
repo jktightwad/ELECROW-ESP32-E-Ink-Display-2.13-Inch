@@ -23,6 +23,11 @@ class WifiStore {
   // Saves only if something changed.
   void remember(const String& ssid, const String& pass);
 
+  // Adds a network at the end of the list if it isn't there yet (and there's
+  // room), or updates its password; used to save the networks from secrets.h.
+  // Returns true if the list changed.
+  bool addIfMissing(const String& ssid, const String& pass);
+
  private:
   void save() const;
   std::vector<WifiCred> nets_;
