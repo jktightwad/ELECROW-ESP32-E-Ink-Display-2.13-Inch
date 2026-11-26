@@ -15,7 +15,8 @@ Firmware for the **Elecrow CrowPanel ESP32 E-Paper HMI 2.13"** (122x250, black/w
 - [x] Upload and serial output working
 - [x] Display driver (`src/crowpanel_epd.cpp`), based on Elecrow's v1.2 example; orientation and visible area confirmed on hardware
 - [x] Random "Tell David" line on dial press, list stored on the board (LittleFS)
-- [ ] Weather dashboard, clock, fast refresh, Wi-Fi setup hotspot: written, not yet confirmed on hardware
+- [x] Weather dashboard, clock, fast refresh, startup checklist, status page
+- [x] Over-the-air updates: v1.0.0 installed over Wi-Fi from a signed GitHub release (dev -> 1.0.0)
 
 ## Buttons
 | Button | Action |
