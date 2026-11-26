@@ -21,8 +21,8 @@ Firmware for the **Elecrow CrowPanel ESP32 E-Paper HMI 2.13"** (122x250, black/w
 | Button | Action |
 |---|---|
 | Dial press | random "Tell David" line (10 s) |
-| Home (Elecrow: Menu, GPIO2; side edge, end farther from USB-C) | status page (10 s): Wi-Fi network and signal, IP, MQTT, location, weather age, uptime, MAC |
-| Back (Exit, GPIO1; side edge, end nearer the USB-C socket) | back to the dashboard now; **hold 5 s**: restart into the Wi-Fi setup hotspot |
+| Home (Elecrow: Menu, GPIO2): the **top** button on the side | status page (10 s): Wi-Fi network and signal, IP, MQTT, location, weather age, uptime, MAC |
+| Back (Exit, GPIO1): with the USB-C port at the bottom, the **bottom** button on the side | back to the dashboard now; **hold 5 s**: restart into the Wi-Fi setup hotspot |
 | Dial up/down | not used yet |
 
 ## Firmware updates (OTA)
