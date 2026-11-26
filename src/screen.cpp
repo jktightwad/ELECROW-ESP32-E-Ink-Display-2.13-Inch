@@ -156,10 +156,11 @@ void drawDashboardScreen(Adafruit_GFX& gfx, const DashboardInfo& info) {
   drawText(gfx, &Barlow_SB13, SCREEN_W - 4, row_top, cond, 2);
 }
 
-void drawBootScreen(Adafruit_GFX& gfx, const BootStep* steps, int count) {
+void drawBootScreen(Adafruit_GFX& gfx, const BootStep* steps, int count, const char* version) {
   gfx.fillScreen(0);
   gfx.fillRect(0, 0, SCREEN_W, 16, 1);
   drawText(gfx, &Barlow_SB13, 4, 3, "POWERING ON", 0, 0);
+  drawText(gfx, &Barlow_SB13, SCREEN_W - 4, 3, (String("v") + version).c_str(), 2, 0);
   const int16_t row_h = 20, box = 10;
   for (int i = 0; i < count; i++) {
     const BootStep& st = steps[i];

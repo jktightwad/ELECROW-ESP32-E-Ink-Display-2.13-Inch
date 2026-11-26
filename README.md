@@ -25,6 +25,30 @@ Firmware for the **Elecrow CrowPanel ESP32 E-Paper HMI 2.13"** (122x250, black/w
 | Back (Exit, GPIO1) | back to the dashboard now; held while the board starts: Wi-Fi setup hotspot |
 | Dial up/down | not used yet |
 
+## Firmware updates (OTA)
+Displays update themselves from this repository's GitHub Releases:
+- They check the latest release at start-up, every 6 hours, and on
+  `{"deviceId":"nodavid","cmd":"update"}`. A newer version is downloaded into the spare firmware
+  slot, its **signature** is checked, and the display restarts into it ("Downloading..." on screen).
+  Saved data (lines, Wi-Fi networks, location, settings) is kept.
+- If the new firmware can't hold a Wi-Fi connection within 5 minutes, or keeps restarting, the display
+  switches back to the previous firmware and skips that version until an `update` command.
+  (A firmware that crashes before it starts running can't recover this way; that needs USB.)
+- Status reports go to the `debug-messages` feed as JSON, e.g.
+  `{"type":"nodavid-status","fw":"1.3.0","event":"ota-updated","detail":"from 1.2.0"}`.
+  Events: `boot`, `ota-updated`, `ota-failed`, `ota-rolled-back`, `ota-check` (reply to the command).
+- Builds from your PC report version `dev` and only update on the `update` command.
+
+**One-time setup**
+1. In the PlatformIO terminal: `python tools/make_ota_key.py`. It writes `include/ota_public_key.h`
+   (commit this) and prints a **private key**: add it as a GitHub repository secret named
+   `OTA_SIGNING_KEY` (Settings → Secrets and variables → Actions), then clear it from your screen.
+   Never commit or share it: anyone with it can sign firmware the displays will accept.
+2. Flash each display once over USB with firmware that includes that public key.
+
+**Releasing**: commit, then `git tag v1.3.0` and `git push origin v1.3.0` (or create the tag in
+GitHub Desktop / a GitHub release). The *Release firmware* workflow builds, signs and publishes it.
+
 ## Startup
 On power-up the display shows a **startup checklist** under a "POWERING ON" header: Wi-Fi, Clock,
 Location, Weather, Messages (MQTT). Each step is ticked (or crossed, with a short reason) as it completes, using fast
@@ -39,6 +63,9 @@ At start the display scans and joins the **strongest known network in range**. K
 
 If none is in range, it opens an open hotspot **CrowPanel-Setup** for 5 minutes and shows the steps on
 screen: join it from a phone, pick your network on the page that opens (or browse to 192.168.4.1).
+The same page has fields for the **Adafruit IO username and key**; they're saved on the board
+(`/config.txt`). Leave the key field empty to keep the saved key. The hotspot is open (no password),
+so enter the key somewhere private.
 To add a network that's not in range at startup, **hold the Back button while the board starts**.
 If Wi-Fi drops for more than a minute, it rescans for any known network every minute.
 
@@ -93,7 +120,7 @@ its device ID doesn't match.
 - Port 1883 is unencrypted, so the AIO key travels in plain text on your network.
 
 ## Notes
-- Wi-Fi and MQTT settings: copy `include/secrets.example.h` to `include/secrets.h` and fill it in. `secrets.h` is git-ignored, so it is never pushed. Without it, the display runs with the dial button only.
+- `include/secrets.h` (optional, git-ignored): extra Wi-Fi networks and local-build fallbacks; see `include/secrets.example.h`. Release builds don't use it.
 
 ## License
 GPL-3.0. See [LICENSE](LICENSE).

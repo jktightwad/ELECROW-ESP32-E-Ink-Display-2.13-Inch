@@ -30,7 +30,7 @@ struct BootStep {
   StepState state;
   String detail;              // e.g. network name, or why it failed
 };
-void drawBootScreen(Adafruit_GFX& gfx, const BootStep* steps, int count);
+void drawBootScreen(Adafruit_GFX& gfx, const BootStep* steps, int count, const char* version);
 
 // Status page (Home button): one "Label: value" per row, under a header.
 struct StatusRow {

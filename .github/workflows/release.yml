@@ -1,0 +1,66 @@
+# Builds, signs and publishes a firmware release when a version tag is pushed:
+#   git tag v1.3.0 && git push origin v1.3.0
+# Displays check the latest release's manifest.json every 6 hours (or on the
+# MQTT "update" command) and install newer versions.
+#
+# Needs the repository secret OTA_SIGNING_KEY (from tools/make_ota_key.py).
+name: Release firmware
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write      # to create the release
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check signing key is set up
+        env:
+          OTA_SIGNING_KEY: ${{ secrets.OTA_SIGNING_KEY }}
+        run: |
+          if grep -q "replace-me" include/ota_public_key.h; then
+            echo "::error::include/ota_public_key.h is still the placeholder. Run tools/make_ota_key.py and commit it."
+            exit 1
+          fi
+          if [ -z "$OTA_SIGNING_KEY" ]; then
+            echo "::error::Repository secret OTA_SIGNING_KEY is not set."
+            exit 1
+          fi
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-${{ hashFiles('platformio.ini') }}
+      - run: pip install platformio cryptography
+
+      - name: Build
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          export PLATFORMIO_BUILD_FLAGS="-DFW_VERSION=\\\"${VERSION}\\\""
+          pio run -e crowpanel_213
+          cp .pio/build/crowpanel_213/firmware.bin firmware.bin
+
+      - name: Sign and write manifest
+        env:
+          OTA_SIGNING_KEY: ${{ secrets.OTA_SIGNING_KEY }}
+        run: |
+          python tools/sign_firmware.py firmware.bin "$VERSION" \
+            "https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/firmware.bin" \
+            manifest.json
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" firmware.bin manifest.json \
+            --title "Firmware $VERSION" \
+            --notes "Over-the-air update. Displays install it automatically within 6 hours, or immediately on {\"deviceId\":\"nodavid\",\"cmd\":\"update\"}."

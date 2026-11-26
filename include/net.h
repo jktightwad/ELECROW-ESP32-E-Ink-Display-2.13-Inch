@@ -11,7 +11,8 @@
 // starts forces the setup hotspot. If Wi-Fi drops for over a minute, known
 // networks are rescanned every minute.
 //
-// MQTT (Adafruit IO, needs secrets.h): subscribes to one shared feed
+// MQTT (Adafruit IO; username/key saved on the board via the setup hotspot,
+// or secrets.h for local builds): subscribes to one shared feed
 // (<user>/feeds/<MQTT_FEED>) and acts only on JSON commands addressed to
 // DEVICE_ID; see command.h for the format.
 struct NetHandlers {
@@ -20,6 +21,7 @@ struct NetHandlers {
   void (*onShowText)(const String& text);
   void (*onLocation)(const String& place);
   void (*onPortal)(const char* ap_name);   // setup hotspot opened: show instructions
+  void (*onUpdate)();                       // MQTT "update" command
 };
 
 // Connects Wi-Fi (may block up to ~6 minutes if the setup portal opens), then
@@ -38,3 +40,7 @@ String netIp();
 const char* netMqttStatus();   // "connected", "connecting", "not set up", "offline"
 const char* netDeviceId();     // DEVICE_ID used for MQTT commands
 String netMac();
+
+// Queues a JSON status report for the shared status feed (STATUS_FEED,
+// default "debug-messages"); sent once MQTT is connected.
+void netReportStatus(const String& json);

@@ -13,17 +13,18 @@
     {"office-network", "office-password"}, \
 }
 
-// Adafruit IO
-#define MQTT_HOST     "io.adafruit.com"       // "" disables MQTT
-#define MQTT_PORT     1883
-#define MQTT_USER     "your-aio-username"
-#define MQTT_PASSWORD "your-aio-key"
+// Adafruit IO username/key: normally entered once in the CrowPanel-Setup
+// hotspot page and saved on the board (so release builds contain no
+// credentials). Defining them here is only a fallback for builds on your PC.
+// #define MQTT_USER     "your-aio-username"
+// #define MQTT_PASSWORD "your-aio-key"
 
-// Shared feed. The display acts only on JSON commands addressed to DEVICE_ID
-// and silently ignores everything else on the feed:
+// Optional overrides (defaults shown):
+// #define MQTT_FEED   "onair-dot-control"   // commands are read from this feed
+// #define STATUS_FEED "debug-messages"      // status reports go to this feed
+// #define DEVICE_ID   "nodavid"             // deviceId this display answers to
 //   {"deviceId":"nodavid","cmd":"random"}
 //   {"deviceId":"nodavid","cmd":"show","text":"Back in 5"}
 //   {"deviceId":"nodavid","cmd":"add","text":"A new line"}
 //   {"deviceId":"nodavid","cmd":"location","text":"Albany, NY"}   (or "auto": by IP address)
-#define MQTT_FEED     "onair-dot-control"
-#define DEVICE_ID     "nodavid"
+//   {"deviceId":"nodavid","cmd":"update"}   (check for a firmware update now)

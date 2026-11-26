@@ -7,6 +7,7 @@
 #include "line_store.h"
 #include "location_store.h"
 #include "net.h"
+#include "ota.h"
 #include "screen.h"
 #include "weather.h"
 
@@ -30,6 +31,7 @@ const uint32_t WEATHER_RETRY_MS = 2 * 60000UL;       // retry after a failed fet
 const uint32_t FULL_REFRESH_EVERY_MS = 10 * 60000UL; // clears ghosting left by fast refreshes
 const uint32_t STALE_AFTER_MS = 30 * 60000UL;        // show "offline" when weather is this old
 const uint32_t IP_LOCATION_EVERY_MS = 6 * 3600000UL; // re-check where the board is (auto mode)
+const uint32_t OTA_CHECK_EVERY_MS = 6 * 3600000UL;   // look for a firmware update
 
 enum class Screen { Dashboard, Message };
 Screen screen = Screen::Dashboard;
@@ -54,6 +56,8 @@ long drawn_minute = -1;              // local minute shown on the dashboard
 // display refresh never runs inside the MQTT callback.
 bool pending_random = false;
 bool pending_status = false;
+bool pending_update = false;          // MQTT "update" command
+uint32_t ota_checked_at = 0;
 bool pending_back = false;
 bool pending_text = false;
 String pending_text_value;
@@ -160,7 +164,7 @@ void showStatus() {
     {"MQTT", String(netMqttStatus()) + " as " + netDeviceId()},
     {"Location", location.label + " (" + source + ")"},
     {"Weather", weather_age},
-    {"Uptime", String(uptime) + "  " + netMac()},
+    {"Firmware", String(FW_VERSION) + "   up " + uptime},
   };
   canvas.setRotation(1);
   drawStatusScreen(canvas, DEVICE_NAME, rows, sizeof rows / sizeof rows[0]);
@@ -283,6 +287,35 @@ void changeLocation(const String& place) {
   if (screen == Screen::Dashboard) showDashboard(true);
 }
 
+// ---------------------------------------------------------------- firmware updates
+
+void showUpdating(const char* text) {
+  canvas.setRotation(1);
+  drawTextScreen(canvas, text);
+  canvas.setRotation(0);
+  refresh(true);
+}
+
+// Looks for a firmware update; installs it and restarts if there is one.
+void checkForUpdate(bool force) {
+  ota_checked_at = millis();
+  if (!netWifiConnected()) return;
+  String message;
+  OtaResult r = otaCheck(force, message, [](const char* text) { showUpdating(text); });
+  Serial.printf("OTA: %s\n", message.c_str());
+  if (r == OtaResult::Installed) {
+    showUpdating("Update installed. Restarting...");
+    delay(1500);
+    ESP.restart();
+  }
+  if (r == OtaResult::Failed) {
+    netReportStatus(otaEvent("ota-failed", message));
+    if (screen == Screen::Dashboard) showDashboard(true);   // replace the "Downloading" screen
+  } else if (force) {
+    netReportStatus(otaEvent("ota-check", message));        // answer the update command
+  }
+}
+
 // ---------------------------------------------------------------- startup screen
 
 enum BootIndex { B_WIFI, B_CLOCK, B_LOCATION, B_WEATHER, B_MQTT, B_COUNT };
@@ -303,7 +336,7 @@ void bootStep(int i, StepState state, const String& detail = "") {
                 state == StepState::Active ? "..." : state == StepState::Skipped ? "skipped" : "",
                 detail.c_str());
   canvas.setRotation(1);
-  drawBootScreen(canvas, boot_steps, B_COUNT);
+  drawBootScreen(canvas, boot_steps, B_COUNT, FW_VERSION);
   canvas.setRotation(0);
   refresh(false);
 }
@@ -332,6 +365,7 @@ void setup() {
   if (force_portal) Serial.println("Back button held - opening Wi-Fi setup");
 
   lines.begin();                           // also mounts the file system
+  String ota_event = otaBootCheck();       // may roll back a failing update (restarts)
   if (!loadLocation(location)) {
     location.label = DEFAULT_LOCATION;     // shown until the first lookup
     location.label.toUpperCase();
@@ -347,6 +381,7 @@ void setup() {
   h.onShowText = [](const String& text) { pending_text_value = text; pending_text = true; };
   h.onLocation = [](const String& place) { pending_location = place; };
   h.onPortal = [](const char* ap_name) { showSetup(ap_name); };
+  h.onUpdate = []() { pending_update = true; };
 
   // Startup checklist: first draw is a full refresh, each step after it a fast one.
   bootStep(B_WIFI, StepState::Active);
@@ -390,12 +425,21 @@ void setup() {
     bootStep(B_MQTT, StepState::Skipped, "offline");
   }
 
+  // Status reports to the shared feed (sent once MQTT is connected).
+  if (ota_event.length()) netReportStatus(ota_event);
+  netReportStatus(otaEvent("boot", online ? WiFi.SSID() + " " + WiFi.localIP().toString() : String("offline")));
+
   delay(3000);                             // leave the checklist up briefly
+  checkForUpdate(false);                   // restarts if an update is installed
   showDashboard(true);
 }
 
 void loop() {
   netLoop();
+  // A new firmware is confirmed once it holds a Wi-Fi connection (not MQTT:
+  // a wrong Adafruit IO key shouldn't roll back a good update).
+  String ota_event = otaLoop(netWifiConnected());
+  if (ota_event.length()) netReportStatus(ota_event);
 
   // Buttons: act on press (HIGH -> LOW), with a simple debounce.
   struct Button { uint8_t pin; bool* flag; int prev; };
@@ -411,6 +455,13 @@ void loop() {
       if (digitalRead(b.pin) == LOW) *b.flag = true;
     }
     b.prev = now;
+  }
+
+  if (pending_update) {
+    pending_update = false;
+    checkForUpdate(true);
+  } else if (screen == Screen::Dashboard && millis() - ota_checked_at >= OTA_CHECK_EVERY_MS) {
+    checkForUpdate(false);
   }
 
   if (pending_location.length()) {
