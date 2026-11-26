@@ -7,6 +7,7 @@
 #include "line_store.h"
 #include "location_store.h"
 #include "net.h"
+#include <LittleFS.h>
 #include "ota.h"
 #include "screen.h"
 #include "weather.h"
@@ -24,7 +25,9 @@ const char* const DEFAULT_LOCATION = "Albany, NY";   // used if the IP location 
 const char* const DEVICE_NAME = "Desk Display";      // shown on the status page
 const uint8_t TRIGGER_BUTTON = KEY_OK;               // press the dial: random "Tell David" line
 const uint8_t STATUS_BUTTON = KEY_HOME;              // status page
-const uint8_t BACK_BUTTON = KEY_EXIT;                // back to the dashboard; hold while starting for Wi-Fi setup
+const uint8_t BACK_BUTTON = KEY_EXIT;                // back to the dashboard; hold 5 s for Wi-Fi setup
+const uint32_t SETUP_HOLD_MS = 5000;
+const char* const SETUP_FLAG = "/setup.flag";        // open the setup hotspot on the next start
 const uint32_t MESSAGE_SHOW_MS = 10000;              // how long a message stays up
 const uint32_t WEATHER_EVERY_MS = 10 * 60000UL;      // weather refresh (with a full screen refresh)
 const uint32_t WEATHER_RETRY_MS = 2 * 60000UL;       // retry after a failed fetch
@@ -361,11 +364,15 @@ void setup() {
   pinMode(TRIGGER_BUTTON, INPUT_PULLUP);   // buttons read LOW when pressed (per Elecrow's example)
   pinMode(STATUS_BUTTON, INPUT_PULLUP);
   pinMode(BACK_BUTTON, INPUT_PULLUP);
-  bool force_portal = digitalRead(BACK_BUTTON) == LOW;
-  if (force_portal) Serial.println("Back button held - opening Wi-Fi setup");
+  bool force_portal = digitalRead(BACK_BUTTON) == LOW;   // still works: held while starting
 
   lines.begin();                           // also mounts the file system
   String ota_event = otaBootCheck();       // may roll back a failing update (restarts)
+  if (LittleFS.exists(SETUP_FLAG)) {        // Back was held for 5 s before the restart
+    LittleFS.remove(SETUP_FLAG);
+    force_portal = true;
+  }
+  if (force_portal) Serial.println("Opening Wi-Fi setup hotspot");
   if (!loadLocation(location)) {
     location.label = DEFAULT_LOCATION;     // shown until the first lookup
     location.label.toUpperCase();
@@ -455,6 +462,21 @@ void loop() {
       if (digitalRead(b.pin) == LOW) *b.flag = true;
     }
     b.prev = now;
+  }
+
+  // Back held for 5 s: restart into the Wi-Fi setup hotspot.
+  static uint32_t back_down_since = 0;
+  if (digitalRead(BACK_BUTTON) == LOW) {
+    if (!back_down_since) back_down_since = millis();
+    if (millis() - back_down_since >= SETUP_HOLD_MS) {
+      Serial.println("Back held 5 s - restarting into Wi-Fi setup");
+      File f = LittleFS.open(SETUP_FLAG, "w");
+      if (f) f.close();
+      showUpdating("Opening Wi-Fi setup...");
+      ESP.restart();
+    }
+  } else {
+    back_down_since = 0;
   }
 
   if (pending_update) {

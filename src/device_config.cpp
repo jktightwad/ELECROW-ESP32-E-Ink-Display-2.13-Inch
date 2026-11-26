@@ -22,12 +22,19 @@ DeviceConfig loadDeviceConfig() {
     }
     if (f) f.close();
   }
+  // Builds from your PC with secrets.h: copy its Adafruit IO details into the
+  // saved settings, so release builds (which have no secrets.h) find them.
+  bool copied = false;
 #ifdef MQTT_USER
-  if (!cfg.aio_user.length()) cfg.aio_user = MQTT_USER;
+  if (!cfg.aio_user.length() && strlen(MQTT_USER)) { cfg.aio_user = MQTT_USER; copied = true; }
 #endif
 #ifdef MQTT_PASSWORD
-  if (!cfg.aio_key.length()) cfg.aio_key = MQTT_PASSWORD;
+  if (!cfg.aio_key.length() && strlen(MQTT_PASSWORD)) { cfg.aio_key = MQTT_PASSWORD; copied = true; }
 #endif
+  if (copied) {
+    Serial.println("Config: copying Adafruit IO details from secrets.h");
+    saveDeviceConfig(cfg);
+  }
   return cfg;
 }
 

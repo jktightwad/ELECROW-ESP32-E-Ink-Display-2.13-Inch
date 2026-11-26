@@ -21,8 +21,8 @@ Firmware for the **Elecrow CrowPanel ESP32 E-Paper HMI 2.13"** (122x250, black/w
 | Button | Action |
 |---|---|
 | Dial press | random "Tell David" line (10 s) |
-| Home (Elecrow: Menu, GPIO2) | status page (10 s): Wi-Fi network and signal, IP, MQTT, location, weather age, uptime, MAC |
-| Back (Exit, GPIO1) | back to the dashboard now; held while the board starts: Wi-Fi setup hotspot |
+| Home (Elecrow: Menu, GPIO2; side edge, end farther from USB-C) | status page (10 s): Wi-Fi network and signal, IP, MQTT, location, weather age, uptime, MAC |
+| Back (Exit, GPIO1; side edge, end nearer the USB-C socket) | back to the dashboard now; **hold 5 s**: restart into the Wi-Fi setup hotspot |
 | Dial up/down | not used yet |
 
 ## Firmware updates (OTA)
@@ -64,9 +64,10 @@ At start the display scans and joins the **strongest known network in range**. K
 If none is in range, it opens an open hotspot **CrowPanel-Setup** for 5 minutes and shows the steps on
 screen: join it from a phone, pick your network on the page that opens (or browse to 192.168.4.1).
 The same page has fields for the **Adafruit IO username and key**; they're saved on the board
-(`/config.txt`). Leave the key field empty to keep the saved key. The hotspot is open (no password),
+(`/config.txt`). A build from your PC that has them in `secrets.h` copies them there automatically. Leave the key field empty to keep the saved key. The hotspot is open (no password),
 so enter the key somewhere private.
-To add a network that's not in range at startup, **hold the Back button while the board starts**.
+To add a network, or change the Adafruit IO details, **hold the Back button for 5 seconds**: the
+display restarts into the setup hotspot.
 If Wi-Fi drops for more than a minute, it rescans for any known network every minute.
 
 Passwords are stored unencrypted in the board's flash (as the ESP32's own Wi-Fi storage does), so

@@ -10,6 +10,7 @@ struct DeviceConfig {
   String aio_key;
 };
 
-// Loads /config.txt; values missing from it fall back to secrets.h (local builds).
+// Loads /config.txt. Values missing from it are taken from secrets.h (builds
+// from your PC) and saved, so later release builds have them too.
 DeviceConfig loadDeviceConfig();
 void saveDeviceConfig(const DeviceConfig& cfg);
